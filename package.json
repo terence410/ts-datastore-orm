@@ -1,0 +1,47 @@
+{
+  "name": "ts-datastore-orm",
+  "version": "0.1.1",
+  "description": "A full functional Datastore Orm library written in Typescript.",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "test": "",
+    "test-general": "mocha --exit --timeout 300000 -r ts-node/register tests/general.test.ts",
+    "test-query": "mocha --exit --timeout 300000 -r ts-node/register tests/query.test.ts",
+    "test-helpers": "mocha --exit --timeout 300000 -r ts-node/register tests/helpers.test.ts",
+    "test-transaction": "mocha --exit --timeout 300000 -r ts-node/register tests/transaction.test.ts",
+    "test-errors": "mocha --exit --timeout 300000 -r ts-node/register tests/errors.test.ts",
+    "test-admin": "mocha --exit --timeout 300000 -r ts-node/register tests/admin.test.ts",
+    "patch": "npm version patch",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.1.13",
+    "@google-cloud/datastore": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.2.5",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.12.14",
+    "dotenv": "^8.2.0",
+    "chai": "^4.2.0",
+    "mocha": "^6.2.2",
+    "source-map-support": "^0.5.16",
+    "ts-node": "^8.5.4",
+    "typescript": "^3.7.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/terence410/ts-datastore-orm.git"
+  },
+  "author": "Terence",
+  "keywords": [
+    "datastore",
+    "datastore orm",
+    "transaction",
+    "google cloud",
+    "relational db",
+    "typescript"
+  ],
+  "license": "MIT License"
+}

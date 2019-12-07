@@ -1,42 +1,3 @@
-# Datastore ORM (Typescript)
-
-[![NPM version](https://badge.fury.io/js/ts-datastore-orm.png)](https://www.npmjs.com/package/ts-datastore-orm)
-
-[ts-datastore-orm](https://www.npmjs.com/package/ts-datastore-orm) targets to provide a structural Orm feature for Datastore.
-
-# Feature
-- Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
-- Support default values. This will be useful if you decided to add extra columns to an entity.
-- Provide execution time for every request.
-- Provides various helpers to achieve simple, but tedious tasks. Such as increment and query child entities.  
-
-# Project Setup
-- npm install ts-datastore-orm
-- In tsconfig.json, set "experimentalDecorators" to true. 
-- In tsconfig.json, set "emitDecoratorMetadata" to true. 
-- In tsconfig.json, set "strictNullChecks" to true. (To avoid type confusion in entity)
-- Create datastoreorm.default.json in the project root folder.
-- Generate datastore-service-account.json from Goolge APIs. (Details won't cover here)
-
-# Environment Variable
-- export NODE_ENV=production
-  - it will try to load the config file "./datastoreom.production.json"
-- export DATASTOREORM_CONFIG_PATH=./path/custom.json
-  - it will try to load the config file "./path/custom.json"
-  - this has a higher priority than NODE_ENV
-  
-# Config file format (./datastoreom.default.json)
-
-```json5
-{
-  "keyFilename": "datastoreServiceAccount.json",
-  "friendlyError": true, // for easier debugging of promise
-}
-```
-
-# Example
-```typescript
-
 import {
     BaseEntity,
     Batcher,
@@ -46,7 +7,7 @@ import {
     IncrementHelper,
     RelationshipHelper,
     Transaction,
-} from "ts-datastore-orm";
+} from "./src/index";
 
 @Entity({namespace: "testing", kind: "user"})
 export class User extends BaseEntity {
@@ -246,23 +207,3 @@ async function incrementHelperExamples() {
     const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
     const latestValue = user1.number;
 }
-
-
-```
-
-# Useful links
-https://googleapis.dev/nodejs/datastore/5.0.0/index.html
-https://cloud.google.com/datastore/docs/
-https://www.npmjs.com/package/@google-cloud/datastore
-https://www.npmjs.com/package/@google-cloud/firestore
-
-# To-do
-- consolidate all error messages and type (wrap all datastore errors)
-- enhance db administration (get all namespaces, kinds, properties) 
-- compute Query SQL for debug
-- Unique Helper to do extra unique key mapping on entity
-- able to generate/deploy composite config
-- switching namespace
-- validate entity group are of same namespace
-- friendlyError will by pass internal errors
-- enforce type cast for column (if data return from server is different)
