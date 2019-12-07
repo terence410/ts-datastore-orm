@@ -4,6 +4,8 @@
 
 [ts-datastore-orm](https://www.npmjs.com/package/ts-datastore-orm) targets to provide a structural Orm feature for Datastore.
 
+This package is mainly built on top of [nodejs-datastore](https://github.com/googleapis/nodejs-datastore) provided by google.
+
 # Feature
 - Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
 - Support default values. This will be useful if you decided to add extra columns to an entity.
@@ -247,14 +249,25 @@ async function incrementHelperExamples() {
     const latestValue = user1.number;
 }
 
-
 ```
 
+# More Samples
+Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tree/master/tests) directory.
+
+| Sample                      | Source Code                       | 
+| --------------------------- | --------------------------------- |
+| Concepts | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/general.test.ts) |
+| Transactions | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/transaction.test.ts) |
+| Query | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/query.test.ts) |
+| Helpers | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers.test.ts) |
+| Errors | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/errors.test.ts) |
+| Admin | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/admin.test.ts) |
+
 # Useful links
-https://googleapis.dev/nodejs/datastore/5.0.0/index.html
-https://cloud.google.com/datastore/docs/
-https://www.npmjs.com/package/@google-cloud/datastore
-https://www.npmjs.com/package/@google-cloud/firestore
+- https://googleapis.dev/nodejs/datastore/5.0.0/index.html
+- https://cloud.google.com/datastore/docs/
+- https://www.npmjs.com/package/@google-cloud/datastore
+- https://www.npmjs.com/package/@google-cloud/firestore
 
 # To-do
 - consolidate all error messages and type (wrap all datastore errors)
