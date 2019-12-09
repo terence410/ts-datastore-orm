@@ -7,6 +7,7 @@
 This package is mainly built on top of [nodejs-datastore](https://github.com/googleapis/nodejs-datastore) provided by google.
 
 # Feature
+- Covering all features of datastore: query, transaction, ancestor, index, allocateIds, namespace, etc..
 - Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
 - Support default values. This will be useful if you decided to add extra columns to an entity.
 - Provide execution time for every request.
@@ -27,7 +28,7 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
   - it will try to load the config file "./path/custom.json"
   - this has a higher priority than NODE_ENV
   
-# Config file format (./datastoreom.default.json)
+# Config file format (./datastoreorm.default.json)
 
 ```json5
 {
@@ -36,9 +37,26 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
 }
 ```
 
-# Example
+# Quick Start
 ```typescript
+import {BaseEntity, Column, Entity} from "ts-datastore-orm";
 
+@Entity({namespace: "testing", kind: "user"})
+export class User extends BaseEntity {
+    @Column({generateId: true})
+    public id: number = 0;
+}
+
+async function main() {
+    const user = User.create();
+    await user.save();
+    const id = user.id;
+}
+
+```
+
+# Samples
+```typescript
 import {
     BaseEntity,
     Batcher,
@@ -248,7 +266,6 @@ async function incrementHelperExamples() {
     const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
     const latestValue = user1.number;
 }
-
 ```
 
 # More Samples
@@ -272,7 +289,6 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 # To-do
 - consolidate all error messages and type (wrap all datastore errors)
 - enhance db administration (get all namespaces, kinds, properties) 
-- compute Query SQL for debug
 - Unique Helper to do extra unique key mapping on entity
 - able to generate/deploy composite config
 - switching namespace

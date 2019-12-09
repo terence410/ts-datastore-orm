@@ -79,7 +79,7 @@ export class Query<T extends typeof BaseEntity> {
     }
 
     public filterAny(column: string, operator: IOperator, value: any) {
-        this._query.filter(column as string, operator, value);
+        this.filter(column as any, operator, value);
         return this;
     }
 
@@ -113,8 +113,8 @@ export class Query<T extends typeof BaseEntity> {
     }
 
     public async runOnce(): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
-        const [entities, queryResponse] = await this.limit(1).run();
-        return [entities.length ? entities[0] : undefined, queryResponse];
+        const [entities, requestResponse] = await this.limit(1).run();
+        return [entities.length ? entities[0] : undefined, requestResponse];
     }
 
     public async run(): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
@@ -167,10 +167,6 @@ export class Query<T extends typeof BaseEntity> {
         return (streamEvent as any) as IQueryStreamEvent<InstanceType<T>>;
     }
     
-    public getSQL(): string {
-        return "";
-    }
-
     // region private methods
 
     // endregion

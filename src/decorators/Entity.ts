@@ -1,3 +1,4 @@
+import {BaseEntity} from "../BaseEntity";
 import {datastoreOrm} from "../datastoreOrm";
 import {DatastoreOrmEntityError} from "../errors/DatastoreOrmEntityError";
 import {IEntityMeta, IEntityMetaBase} from "../types";
@@ -11,13 +12,33 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
             ancestors: [],
             excludeFromIndexes: [],
         };
+        newEntityMeta = Object.assign(newEntityMeta, entityMeta);
 
+        // it has a subclass, add all it's column
+        const subClassTarget = Object.getPrototypeOf(target);
+        if (subClassTarget !== BaseEntity) {
+            const subClassEntityMeta = datastoreOrm.getEntityMeta(subClassTarget);
+            if (subClassEntityMeta) {
+                throw new DatastoreOrmEntityError(`(${(target as any).name}) This entity is subclassing (${subClassTarget.name}) which already defined as an Entity.`);
+            }
+
+            const subClassColumns = datastoreOrm.getEntityColumns(subClassTarget);
+            for (const [column, entityColumn] of Object.entries(subClassColumns)) {
+                datastoreOrm.addColumn(target, column, entityColumn);
+            }
+        }
+
+        // get existing entity columns
         const entityColumns = datastoreOrm.getEntityColumns(target);
 
         // check if we have a id column
         const idColumn = Object.keys(entityColumns).find(x => x === "id");
         if (!idColumn) {
-            throw new DatastoreOrmEntityError(`(${(target as any).name}) Entity must consist an id column.`);
+            throw new DatastoreOrmEntityError(`(${(target as any).name}) Entity must define an id column.`);
+        }
+
+        if (!newEntityMeta.kind) {
+            throw new DatastoreOrmEntityError(`(${(target as any).name}) Entity must specific a kind.`);
         }
 
         // create exclude from indexes
@@ -34,7 +55,6 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         }
 
         // update the meta
-        newEntityMeta = Object.assign(newEntityMeta, entityMeta);
         newEntityMeta.excludeFromIndexes = excludeFromIndexes;
         newEntityMeta.ancestors = Array.isArray(entityMeta.ancestors) ? entityMeta.ancestors :
             (entityMeta.ancestors ? [entityMeta.ancestors] : []);

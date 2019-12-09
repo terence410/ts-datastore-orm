@@ -29,7 +29,7 @@ export type ISaveResult = {
 // region response
 
 export type ITransactionResponse = {
-    isSuccess: boolean;
+    hasCommit: boolean;
     totalRetry: number;
     executionTime: number;
     savedEntities: BaseEntity[];
@@ -37,6 +37,11 @@ export type ITransactionResponse = {
 };
 
 export type IRequestResponse = {
+    executionTime: number;
+};
+
+export type ILockResponse = {
+    totalRetry: number;
     executionTime: number;
 };
 
@@ -102,13 +107,26 @@ export interface IQueryStreamEvent<T> {
 // endregion
 
 // region arguments
-export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]?: T[P]};
+export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]: T[P]};
 export type IArgvId = string | number;
 export type IArgvColumn<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntity>;
 export type IArgvValue<T extends BaseEntity, K extends keyof IArgvValues<T>> = IArgvValues<T>[K];
-export type IArgvTransactionOptions = {
-    readOnly?: boolean;
-    maxRetry?: number;
-    delay?: number;
+export type ITransactionOptions = {
+    quickRollback: boolean;
+    readOnly: boolean;
+    maxRetry: number;
+    delay: number;
 };
+// endregion
+
+// region helpers
+
+export type ILockOptions = {
+    expire: number;
+    maxRetry: number;
+    delay: number;
+    quickRelease: boolean;
+    throwReleaseError: boolean;
+};
+
 // endregion

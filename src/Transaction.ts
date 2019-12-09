@@ -6,7 +6,7 @@ import {datastoreOrm} from "./datastoreOrm";
 import {errorCodes} from "./enums/errorCodes";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
-import {IArgvId, IArgvTransactionOptions, IRequestResponse, ISaveResult, ITransactionResponse} from "./types";
+import {IArgvId, IRequestResponse, ISaveResult, ITransactionOptions, ITransactionResponse} from "./types";
 // datastore transaction operations:
 // insert: save if not exist
 // update: save if exist
@@ -15,15 +15,19 @@ import {IArgvId, IArgvTransactionOptions, IRequestResponse, ISaveResult, ITransa
 // above should not use await (it probably will be done by batch by transaction)
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const defaultValues = {delay: 50};
+let defaultOptions: ITransactionOptions = {delay: 50, maxRetry: 0, quickRollback: true, readOnly: false};
 
 export class Transaction {
+    public static setDefaultLockOptions(lockOptions: Partial<ITransactionOptions> = {}) {
+        defaultOptions = Object.assign(defaultOptions, lockOptions);
+    }
+    
     public static async execute<T extends any>(callback: (transaction: Transaction) => Promise<T>,
-                                               options: IArgvTransactionOptions = {}): Promise<[T, ITransactionResponse]> {
+                                               options: Partial<ITransactionOptions> = {}): Promise<[T, ITransactionResponse]> {
         // return result
         let result: any;
         const transactionResponse: ITransactionResponse = {
-            isSuccess: false,
+            hasCommit: false,
             totalRetry: 0,
             executionTime: 0,
             savedEntities: [],
@@ -31,10 +35,13 @@ export class Transaction {
         };
         const performanceHelper = new PerformanceHelper().start();
         const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-        const delay = options.delay || defaultValues.delay;
-        const maxRetry = Math.max(1, options.maxRetry || 1);
+        const delay = options.delay || defaultOptions.delay;
+        const quickRollback = options.quickRollback !== undefined ? options.quickRollback : defaultOptions.quickRollback;
+        const maxRetry = Math.max(0, options.maxRetry || defaultOptions.maxRetry);
 
-        for (let i = 0; i < maxRetry; i++) {
+        let retry = 0;
+        do {
+
             // start transaction
             const transaction = new Transaction(options);
             try {
@@ -47,7 +54,7 @@ export class Transaction {
                 // check if user has cancelled the commit
                 if (!transaction.skipCommit) {
                     await transaction.commit();
-                    transactionResponse.isSuccess = true;
+                    transactionResponse.hasCommit = true;
                 }
 
                 transactionResponse.savedEntities = transaction.savedEntities;
@@ -57,18 +64,21 @@ export class Transaction {
                 break;
 
             } catch (err) {
-                // we don't need to wait for rollback for better performance
-                transaction.rollback();
+                // if we don't rollback, it will be faster
+                if (quickRollback) {
+                    transaction.rollback();
+
+                } else {
+                    await transaction.rollback();
+                }
 
                 // retry transaction only if aborted
                 if ((err as any).code === errorCodes.ABORTED) {
-                    if (i < maxRetry - 1) {
-                        transactionResponse.totalRetry += 1;
-                        // add some retry factor
-                        const totalDelay = delay * (i + 1);
+                    if (retry < maxRetry) {
+                        transactionResponse.totalRetry = retry;
 
                         // wait for a while
-                        await timeout(totalDelay);
+                        await timeout(delay);
                         continue;
                     }
                 }
@@ -80,7 +90,7 @@ export class Transaction {
 
                 throw err;
             }
-        }
+        } while (retry++ < maxRetry);
 
         return [result, Object.assign(transactionResponse, performanceHelper.readResult())];
     }
@@ -95,7 +105,7 @@ export class Transaction {
     // internal handling for rollback
     public skipCommit: boolean = false;
 
-    constructor(options: Partial<IArgvTransactionOptions> = {}) {
+    constructor(options: Partial<ITransactionOptions> = {}) {
         const datastore = datastoreOrm.getDatastore();
         this.datastoreTransaction = datastore.transaction({readOnly: options.readOnly});
         this.savedEntities = [];
@@ -131,8 +141,8 @@ export class Transaction {
     }
 
     public async find<T extends typeof BaseEntity>(entityType: T, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
-        const [entities, queryResponse] = await this.findMany(entityType, [id]);
-        return [entities.length ? entities[0] : undefined, queryResponse];
+        const [entities, requestResponse] = await this.findMany(entityType, [id]);
+        return [entities.length ? entities[0] : undefined, requestResponse];
     }
 
     public async findMany<T extends typeof BaseEntity>(entityType: T, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]> {

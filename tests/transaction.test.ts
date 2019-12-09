@@ -4,6 +4,7 @@ import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
 import {errorCodes} from "../src/enums/errorCodes";
+import {timeout} from "../src/utils";
 
 @Entity({namespace: "testing", kind: "transactionTest"})
 export class TransactionTest extends BaseEntity {
@@ -37,7 +38,7 @@ describe("Transaction Test", () => {
 
         const [child1, transactionResponse] = await Transaction.execute(async transaction => {
             let child2: TransactionTest | undefined;
-            const [users1, queryResponse1] = await transaction.findMany(TransactionTest, [id1, id2]);
+            const [users1, requestResponse1] = await transaction.findMany(TransactionTest, [id1, id2]);
 
             if (users1.length > 1) {
                 const user1a = users1[0];
@@ -67,7 +68,7 @@ describe("Transaction Test", () => {
         const id = 11;
         const transaction1 = new Transaction();
         await transaction1.run();
-        const [user1, queryResponse3] = await transaction1.find(TransactionTest, id);
+        const [user1, requestResponse3] = await transaction1.find(TransactionTest, id);
         try {
             if (!user1) {
                 const user2 = TransactionTest.create({name: "Terence"});
@@ -89,7 +90,7 @@ describe("Transaction Test", () => {
         const [_, transactionResponse] = await Transaction.execute(async transaction => {
             transaction.rollback();
         });
-        assert.isFalse(transactionResponse.isSuccess);
+        assert.isFalse(transactionResponse.hasCommit);
     });
 
     it("conflict transaction", async () => {
@@ -137,15 +138,13 @@ describe("Transaction Test", () => {
     });
 
     it("readonly transaction", async () => {
-        const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
         const [user1] = await TransactionTest.create({name: "Terence"}).save();
 
         const readonly = async (readOnly: boolean) => {
             const [children1, transactionResponse] = await Transaction.execute(async transaction => {
                 const [user2] = await transaction.find(TransactionTest, user1.id);
                 await timeout(1000);
-                const [children2, queryResponse1] = await transaction.query(TransactionTestChild).setAncestor(user1).run();
+                const [children2, requestResponse1] = await transaction.query(TransactionTestChild).setAncestor(user1).run();
                 return children2;
             }, {readOnly});
             return children1;

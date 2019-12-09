@@ -3,18 +3,18 @@ import {datastoreOrm} from "../datastoreOrm";
 import {DatastoreOrmSchemaError} from "../errors/DatastoreOrmSchemaError";
 import {IEntityColumn, IEntityColumnBase} from "../types";
 
-export function Column(schema: Partial<IEntityColumnBase> = {}) {
+export function Column(entityColumn: Partial<IEntityColumnBase> = {}) {
     return (target: object, propertyKey: string) => {
         const propertyType = Reflect.getMetadata("design:type", target, propertyKey);
 
         // set default values
-        let newSchema: IEntityColumn = {
+        let newEntityColumn: IEntityColumn = {
             generateId: false,
             index: false,
             excludeFromIndexes: [],
             type: propertyType,
         };
-        newSchema = Object.assign(newSchema, schema);
+        newEntityColumn = Object.assign(newEntityColumn, entityColumn);
 
         // validate id type
         if (propertyKey === "id") {
@@ -24,7 +24,7 @@ export function Column(schema: Partial<IEntityColumnBase> = {}) {
         }
 
         // everything ok, add the schema
-        datastoreOrm.addColumn(target.constructor, propertyKey, newSchema);
+        datastoreOrm.addColumn(target.constructor, propertyKey, newEntityColumn);
 
         // define getter / setter
         if (!Object.getOwnPropertyDescriptor(target.constructor.prototype, propertyKey)) {

@@ -29,7 +29,7 @@ export class User extends BaseEntity {
     @Column()
     public array: number[] = [];
 
-    @Column({excludeFromIndexes: ["object.name"]})
+    @Column({index: true, excludeFromIndexes: ["object.name"]})
     public object: any = {};
 }
 
@@ -166,7 +166,7 @@ async function transaction1Examples() {
         }
     }, {maxRetry: 5});
 
-    if (transactionResponse1.isSuccess && taskGroup1) {
+    if (transactionResponse1.hasCommit && taskGroup1) {
         const taskGroup3Id = taskGroup1.id;
         for (const entity of transactionResponse1.savedEntities) {
             if (entity instanceof TaskGroup) {
@@ -180,7 +180,7 @@ async function transaction1Examples() {
 async function transaction2Examples() {
     const transaction1 = new Transaction();
     await transaction1.run();
-    const [user1, queryResponse3] = await transaction1.find(User, 1);
+    const [user1, requestResponse3] = await transaction1.find(User, 1);
     try {
         if (user1) {
             transaction1.save(user1);
@@ -196,9 +196,9 @@ async function transaction2Examples() {
 async function relationshipHelperExamples() {
     const [user1] = await User.create().save();
     const relationshipHelper = new RelationshipHelper(user1);
-    const [taskGroup4, response9] = await relationshipHelper.get(TaskGroup);
-    const [taskGroup5, response10] = await relationshipHelper.getOrCreate(TaskGroup, {name: "hello"});
-    const [taskGroups1, response11] = await relationshipHelper.getMany(TaskGroup);
+    const [taskGroup4, response9] = await relationshipHelper.findOne(TaskGroup);
+    const [taskGroup5, response10] = await relationshipHelper.findOrCreate(TaskGroup, {name: "hello"});
+    const [taskGroups1, response11] = await relationshipHelper.findMany(TaskGroup);
 }
 
 async function incrementHelperExamples() {

@@ -1,8 +1,6 @@
 import { assert, expect } from "chai";
 import {datastoreOrm} from "../src";
 import {Batcher} from "../src/Batcher";
-import {RelationshipHelper} from "../src/helpers/RelationshipHelper";
-import {Transaction} from "../src/Transaction";
 // @ts-ignore
 import {Task} from "./entities/Task";
 // @ts-ignore
@@ -17,6 +15,18 @@ describe("General Test", () => {
         await User.truncate();
         await TaskGroup.truncate();
         await Task.truncate();
+    });
+
+    it("create entity", async () => {
+        const user = new User();
+        user.id = 999;
+        user.date = new Date();
+        user.number = 100;
+        await user.save();
+
+        // deprecated call
+        const date = user.get("date");
+        user.set("date", new Date());
     });
 
     it("allocate ids", async () => {

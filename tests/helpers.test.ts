@@ -4,11 +4,13 @@ import {BaseEntity} from "../src/BaseEntity";
 import {Batcher} from "../src/Batcher";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
+import {EntityHelper} from "../src/helpers/EntityHelper";
 import {IncrementHelper} from "../src/helpers/IncrementHelper";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
+import {timeout} from "../src/utils";
 
-@Entity({namespace: "testing", kind: "increment"})
-export class Increment extends BaseEntity {
+@Entity({namespace: "testing", kind: "helper"})
+export class Helper extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
 
@@ -19,8 +21,8 @@ export class Increment extends BaseEntity {
     public total2: number = 0;
 }
 
-@Entity({namespace: "testing", kind: "incrementChild", ancestors: Increment})
-export class IncrementChild extends BaseEntity {
+@Entity({namespace: "testing", kind: "helperChild", ancestors: Helper})
+export class HelperChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
 
@@ -28,15 +30,18 @@ export class IncrementChild extends BaseEntity {
     public value: number = 0;
 }
 
-describe("Helper Test: Increment", () => {
+describe("Helper Test: Truncate", () => {
     it("truncate", async () => {
-        const [total, requestResponse] = await Increment.truncate();
+        await Helper.truncate();
+        await HelperChild.truncate();
     });
+});
 
+describe("Helper Test: Increment", () => {
     it("retry auto increment", async () => {
         const loop = 5;
         const maxRetry = 3;
-        const entity = Increment.create({id: 0});
+        const entity = Helper.create({id: 0});
         await entity.save();
         let totalRetry = 0;
 
@@ -52,8 +57,7 @@ describe("Helper Test: Increment", () => {
             assert.equal(results[1][0], i + 1);
         }
 
-        // we must at least half of the retry happened
-        assert.isAtLeast(totalRetry, loop / 2);
+        // we must have some retry
         assert.equal(entity.total1, loop);
         assert.equal(entity.total2, loop);
     });
@@ -62,7 +66,7 @@ describe("Helper Test: Increment", () => {
         const loop = 5;
         const total = 50;
 
-        const entities = Array(total).fill(0).map(x => Increment.create({total1: 0}));
+        const entities = Array(total).fill(0).map(x => Helper.create({total1: 0}));
         const batcher = new Batcher();
         await batcher.saveMany(entities);
 
@@ -82,33 +86,53 @@ describe("Helper Test: Increment", () => {
 });
 
 describe("Helper Test: Relationship", () => {
-    it("truncate", async () => {
-        const [total, requestResponse] = await IncrementChild.truncate();
-    });
-
     it("getOne", async () => {
-        const [entity] = await Increment.create().save();
-        const relationshipHelper = new RelationshipHelper(entity);
+        const [entity1] = await Helper.create().save();
+        const relationshipHelper = new RelationshipHelper(entity1);
 
-        const [entity1] = await relationshipHelper.get(IncrementChild);
-        assert.isUndefined(entity1);
+        const [entityChild1] = await relationshipHelper.findOne(HelperChild);
+        assert.isUndefined(entityChild1);
 
-        const [entity2] = await relationshipHelper.getOrCreate(IncrementChild, {value: 500});
-        assert.isDefined(entity2);
-        assert.isNumber(entity2.id);
-
-        const [entity3] = await relationshipHelper.get(IncrementChild);
-        assert.isDefined(entity3);
+        const [entityChild2] = await HelperChild.create({value: 500}).setAncestor(entity1).save();
+        const [entityChild3] = await relationshipHelper.findOne(HelperChild);
+        assert.isDefined(entityChild3);
+        if (entityChild3) {
+            assert.equal(entityChild2.id, entityChild3.id);
+        }
     });
 
     it("getMany", async () => {
-        const [entity] = await Increment.create().save();
+        const [entity] = await Helper.create().save();
         const relationshipHelper = new RelationshipHelper(entity);
-        const [entities1] = await relationshipHelper.getMany(IncrementChild);
+        const [entities1] = await relationshipHelper.findMany(HelperChild);
         assert.equal(entities1.length, 0);
 
-        const [incrementChild] = await IncrementChild.create({value: 500}).setAncestor(entity).save();
-        const [entities2] = await relationshipHelper.getMany(IncrementChild);
+        const [incrementChild] = await HelperChild.create({value: 500}).setAncestor(entity).save();
+        const [entities2] = await relationshipHelper.findMany(HelperChild);
         assert.equal(entities2.length, 1);
+    });
+});
+
+describe("Helper Test: Entity", () => {
+    it("findOrCrate", async () => {
+        const id = 1001;
+        const [ancestor] = await Helper.create().save();
+
+        const entityHelper = new EntityHelper(HelperChild);
+        const callback = async () => {
+            const value = Math.random() * 1000 | 0;
+            return entityHelper.findOrCreate({id, value}, ancestor);
+        };
+
+        // we load the same entity many times
+        const total = 100;
+        const promises = Array(total).fill(0).map((x => callback()));
+        const results = await Promise.all(promises);
+        assert.equal(results.length, total);
+
+        // all values are the same
+        const value1 = results[0][0].value;
+        assert.isTrue(results.every(x => x[0].value === value1));
+
     });
 });

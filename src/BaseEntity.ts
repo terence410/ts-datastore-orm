@@ -5,7 +5,9 @@ import {DatastoreOrmEntityError} from "./errors/DatastoreOrmEntityError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
 import {
+    IArgvColumn,
     IArgvId,
+    IArgvValue,
     IArgvValues,
     IEntityData,
     IKey,
@@ -17,7 +19,7 @@ export class BaseEntity {
 
     // region static methods
 
-    public static create<T extends typeof BaseEntity>(this: T, values: IArgvValues<InstanceType<T>> = {}): InstanceType<T> {
+    public static create<T extends typeof BaseEntity>(this: T, values: Partial<IArgvValues<InstanceType<T>>> = {}): InstanceType<T> {
         return (new this() as InstanceType<T>).setValues(values);
     }
 
@@ -30,8 +32,8 @@ export class BaseEntity {
     }
 
     public static async find<T extends typeof BaseEntity>(this: T, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
-        const [entities, queryResponse] = await this.findMany([id]);
-        return [entities.length ? entities[0] : undefined, queryResponse];
+        const [entities, requestResponse] = await this.findMany([id]);
+        return [entities.length ? entities[0] : undefined, requestResponse];
     }
 
     public static async findMany<T extends typeof BaseEntity>(this: T, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
@@ -70,10 +72,10 @@ export class BaseEntity {
         let total = 0;
 
         while (query.hasNextPage()) {
-            const [entities, queryResponse] = await query.run();
+            const [entities, requestResponse1] = await query.run();
             const [batchResponse] = await batcher.deleteMany(entities);
             total += entities.length;
-            requestResponse.executionTime += queryResponse.executionTime;
+            requestResponse.executionTime += requestResponse1.executionTime;
             requestResponse.executionTime += batchResponse.executionTime;
         }
 
@@ -179,7 +181,7 @@ export class BaseEntity {
         return key;
     }
 
-    public setValues<T extends BaseEntity>(this: T, values: IArgvValues<T>) {
+    public setValues<T extends BaseEntity>(this: T, values: Partial<IArgvValues<T>>) {
         const columns = datastoreOrm.getColumns(this.constructor);
         for (const column of columns) {
             if (column in values) {
@@ -198,6 +200,16 @@ export class BaseEntity {
         }
 
         return values as IArgvValues<T>;
+    }
+
+    /** @deprecated */
+    public set<T extends BaseEntity, K extends IArgvColumn<T>>(this: T, column: K, value: IArgvValue<T, K>) {
+        return this._set(column as string, value);
+    }
+
+    /** @deprecated */
+    public get<T extends BaseEntity, K extends IArgvColumn<T>>(this: T, column: K): IArgvValue<T, K> {
+        return this._get(column as string);
     }
 
     // we only validate ancestor during save, in case the schema is changed
@@ -258,6 +270,10 @@ export class BaseEntity {
         }
 
         return [this, performanceHelper.readResult()];
+    }
+
+    public toJSON() {
+        return this.getValues();
     }
 
     // endregion

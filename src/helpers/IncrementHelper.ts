@@ -1,13 +1,13 @@
 import {BaseEntity} from "../BaseEntity";
 import {Transaction} from "../Transaction";
-import {IArgvColumn, IArgvTransactionOptions, ITransactionResponse} from "../types";
+import {IArgvColumn, ITransactionOptions, ITransactionResponse} from "../types";
 
 export class IncrementHelper<R extends typeof BaseEntity, T extends InstanceType<R>> {
     constructor(public readonly entity: T) {
 
     }
 
-    public async increment(column: IArgvColumn<T>, increment: number = 1, options: IArgvTransactionOptions = {}):
+    public async increment(column: IArgvColumn<T>, increment: number = 1, options: Partial<ITransactionOptions> = {}):
         Promise<[number, ITransactionResponse]> {
         const [resultValue, transactionResponse] = await Transaction.execute(async transaction => {
             const [currentEntity, response] = await transaction
@@ -26,7 +26,7 @@ export class IncrementHelper<R extends typeof BaseEntity, T extends InstanceType
             }
         }, options);
 
-        if (transactionResponse.isSuccess) {
+        if (transactionResponse.hasCommit) {
             (this.entity as any)[column] = resultValue as number;
             return [resultValue as number, transactionResponse];
         } else {
