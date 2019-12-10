@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {RelationshipHelper} from "../src";
+import {DescendentHelper} from "../src";
 import {BaseEntity} from "../src/BaseEntity";
 import {Batcher} from "../src/Batcher";
 import {Column} from "../src/decorators/Column";
@@ -86,29 +86,29 @@ describe("Helper Test: Increment", () => {
 });
 
 describe("Helper Test: Relationship", () => {
-    it("getOne", async () => {
+    it("findOne", async () => {
         const [entity1] = await Helper.create().save();
-        const relationshipHelper = new RelationshipHelper(entity1);
+        const descendentHelper = new DescendentHelper(entity1);
 
-        const [entityChild1] = await relationshipHelper.findOne(HelperChild);
+        const [entityChild1] = await descendentHelper.findOne(HelperChild);
         assert.isUndefined(entityChild1);
 
         const [entityChild2] = await HelperChild.create({value: 500}).setAncestor(entity1).save();
-        const [entityChild3] = await relationshipHelper.findOne(HelperChild);
+        const [entityChild3] = await descendentHelper.findOne(HelperChild);
         assert.isDefined(entityChild3);
         if (entityChild3) {
             assert.equal(entityChild2.id, entityChild3.id);
         }
     });
 
-    it("getMany", async () => {
+    it("findMany", async () => {
         const [entity] = await Helper.create().save();
-        const relationshipHelper = new RelationshipHelper(entity);
-        const [entities1] = await relationshipHelper.findMany(HelperChild);
+        const descendentHelper = new DescendentHelper(entity);
+        const [entities1] = await descendentHelper.findMany(HelperChild);
         assert.equal(entities1.length, 0);
 
         const [incrementChild] = await HelperChild.create({value: 500}).setAncestor(entity).save();
-        const [entities2] = await relationshipHelper.findMany(HelperChild);
+        const [entities2] = await descendentHelper.findMany(HelperChild);
         assert.equal(entities2.length, 1);
     });
 });

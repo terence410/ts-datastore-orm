@@ -20,13 +20,13 @@ class ConfigLoader {
         for (const configFile of configFiles) {
             try {
                 const result = fs.accessSync(configFile, fs.constants.F_OK);
-                return path.join(process.cwd(), configFile);
+                return path.isAbsolute(configFile) ? configFile : path.join(process.cwd(), configFile);
             } catch (err) {
                 //
             }
         }
 
-        throw Error(`Config file cannot not found on the paths: ${configFiles.join(", ")}.`);
+        throw Error(`Config file cannot not be found on the paths: ${configFiles.join(", ")}.`);
     }
 
     public getConfig() {

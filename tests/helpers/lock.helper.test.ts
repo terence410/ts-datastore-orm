@@ -16,22 +16,22 @@ describe("Helper Test: Increment", () => {
 
     it("lock timeout", async () => {
         const key = "test";
-        const lockHelper1 = new LockHelper(key);
-        const lockHelper2 = new LockHelper(key);
         const expire = 1000;
-        const [isNewLock1] = await lockHelper1.acquire({expire});
+        const lockHelper1 = new LockHelper(key, {expire});
+        const lockHelper2 = new LockHelper(key, {expire});
+        const [isNewLock1] = await lockHelper1.acquire();
         assert.isTrue(isNewLock1);
 
         // you cannot lock again
         try {
-            await lockHelper2.acquire({expire});
+            await lockHelper2.acquire();
             assert.isTrue(false);
         } catch (err) {
             //
         }
 
         await timeout(expire);
-        const [isNewLock2] = await lockHelper2.acquire({expire});
+        const [isNewLock2] = await lockHelper2.acquire();
         assert.isFalse(isNewLock2);
 
         // successfully release
@@ -42,28 +42,28 @@ describe("Helper Test: Increment", () => {
     it("lock release 1", async () => {
         const key = "test1";
         const expire = 1000;
-        const lockHelper = new LockHelper(key);
-        let [isNewLock] = await lockHelper.acquire({expire});
+        const lockHelper = new LockHelper(key, {expire});
+        let [isNewLock] = await lockHelper.acquire();
         assert.isTrue(isNewLock);
 
         const [isReleased] = await lockHelper.release();
         assert.isTrue(isReleased);
 
         // can keep on using the lock
-        [isNewLock] = await lockHelper.acquire({expire});
+        [isNewLock] = await lockHelper.acquire();
         assert.isTrue(isNewLock);
     });
 
     it("lock release 2", async () => {
         const key = "test2";
         const expire = 1000;
-        const lockHelper1 = new LockHelper(key);
-        const lockHelper2 = new LockHelper(key);
-        const [isNewLock1] = await lockHelper1.acquire({expire});
+        const lockHelper1 = new LockHelper(key, {expire});
+        const lockHelper2 = new LockHelper(key, {expire});
+        const [isNewLock1] = await lockHelper1.acquire();
         assert.isTrue(isNewLock1);
 
         await timeout(expire);
-        const [isNewLock2] = await lockHelper2.acquire({expire});
+        const [isNewLock2] = await lockHelper2.acquire();
         assert.isFalse(isNewLock2);
 
         // we can no longer release it
@@ -118,7 +118,7 @@ describe("Helper Test: Increment", () => {
             const promises = Array(total).fill(0).map(x => callback());
             const results = await Promise.all(promises);
             total++;
-            console.log(pp.readResult(), total);
+            // console.log(pp.readResult(), total);
         }
 
         // wait for a while for release

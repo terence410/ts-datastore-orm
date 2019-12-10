@@ -1,6 +1,6 @@
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
-import {DatastoreOrmEntityError} from "./errors/DatastoreOrmEntityError";
+import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {IRequestResponse, ISaveResult} from "./types";
 
@@ -19,7 +19,7 @@ export class Batcher {
         // check any thing are just read only
         const readyOnlyEntity = entities.find(x => x.isReadOnly);
         if (readyOnlyEntity) {
-            throw new DatastoreOrmEntityError(`(${readyOnlyEntity.constructor.name}) This entity is read only. id (${(readyOnlyEntity as any).id}).`);
+            throw new DatastoreOrmOperationError(`(${readyOnlyEntity.constructor.name}) This entity is read only. id (${(readyOnlyEntity as any).id}).`);
         }
 
         // insert

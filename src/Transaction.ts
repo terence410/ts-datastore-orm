@@ -71,7 +71,7 @@ export class Transaction {
                 } else {
                     await transaction.rollback();
                 }
-
+                
                 // retry transaction only if aborted
                 if ((err as any).code === errorCodes.ABORTED) {
                     if (retry < maxRetry) {

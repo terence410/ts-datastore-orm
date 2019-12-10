@@ -1,6 +1,8 @@
+// https://cloud.google.com/datastore/docs/concepts/stats
+
 import * as Datastore from "@google-cloud/datastore";
 import {configLoader} from "./configLoader";
-import {DatastoreOrmEntityError} from "./errors/DatastoreOrmEntityError";
+import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {Transaction} from "./Transaction";
 import {IEntityColumn, IEntityMeta, IKey, ISaveResult} from "./types";
 
@@ -46,12 +48,12 @@ class DatastoreOrm {
             if (i <= argv.length - 1) {
                 const id = argv[i];
                 if (!id) {
-                    throw new DatastoreOrmEntityError(`(${target.name}) id must be non zero and non empty.`);
+                    throw new DatastoreOrmOperationError(`(${target.name}) id must be non zero and non empty.`);
                 }
 
                 const idType = typeof id;
                 if (idType !== "number" && idType !== "string") {
-                    throw new DatastoreOrmEntityError(`(${target.name}) id must be string or number. Current type (${idType}).`);
+                    throw new DatastoreOrmOperationError(`(${target.name}) id must be string or number. Current type (${idType}).`);
                 }
 
                 path.push(id);
@@ -156,7 +158,7 @@ class DatastoreOrm {
         if (entityMeta.ancestors.length) {
             if (!ancestorKey) {
                 const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
-                throw new DatastoreOrmEntityError(`(${(target as any).name}) This entity require ancestors of (${names}).`);
+                throw new DatastoreOrmOperationError(`(${(target as any).name}) This entity require ancestors of (${names}).`);
 
             } else {
                 let isValid = false;
@@ -172,7 +174,7 @@ class DatastoreOrm {
                     const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
                     let errorMessage = `(${(target as any).name}) This entity require ancestors of (${names}), `;
                     errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
-                    throw new DatastoreOrmEntityError(errorMessage);
+                    throw new DatastoreOrmOperationError(errorMessage);
                 }
             }
         } else {
@@ -180,7 +182,7 @@ class DatastoreOrm {
             if (ancestorKey) {
                 let errorMessage = `(${(target as any).name}) This entity does not require any ancestor, `;
                 errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
-                throw new DatastoreOrmEntityError(errorMessage);
+                throw new DatastoreOrmOperationError(errorMessage);
             }
         }
     }
@@ -207,21 +209,37 @@ class DatastoreOrm {
         return results.map(x => x[datastore.KEY]);
     }
 
-    public async getStatKinds(namespaceName: string | undefined): Promise<IKey[]> {
-        return this.getStats(namespaceName, "__Stat_Kind__");
+    public async getAllStats() {
+        //
     }
 
-    public async getStats(namespaceName: string | undefined, statsName: string): Promise<IKey[]> {
+    public async getStats(namespaceName: string | undefined, kind: string, statsName: string): Promise<IKey[]> {
         // if we have namespace, we modify the kindName
-        if (namespaceName) {
-            statsName = statsName.replace("__Stat", "__Stat_Ns");
-        }
+        // if (namespaceName) {
+        //     statsName = statsName.replace("__Stat", "__Stat_Ns");
+        // }
 
         const datastore = this.getDatastore();
+
+        // prepare query
         const query = datastore
             .createQuery( namespaceName as string, [statsName]);
+
+        // if we have kind, then we query the kind with key
+        if (kind) {
+            const key = datastore.key([statsName, kind as string]);
+            key.namespace = namespaceName as string;
+            query.filter("__key__", "=", key);
+        }
+
         const [results] = await datastore.runQuery(query);
         return results;
+    }
+
+    public async getStatsByType(entityType: object, statsName: string): Promise<IKey[]> {
+        // if we have namespace, we modify the kindName
+        const entityMeta = this.getEntityMeta(entityType);
+        return this.getStats(entityMeta.namespace, entityMeta.kind, statsName);
     }
 
     public async getProperties(kind: IKey): Promise<IKey[]> {

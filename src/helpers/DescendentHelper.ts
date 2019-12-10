@@ -3,7 +3,7 @@ import {Query} from "../Query";
 import {Transaction} from "../Transaction";
 import {IRequestResponse} from "../types";
 
-export class RelationshipHelper<T extends BaseEntity> {
+export class DescendentHelper<T extends BaseEntity> {
     constructor(public readonly entity: T, public readonly transaction?: Transaction) {
         //
     }

@@ -1,4 +1,4 @@
-import {DatastoreOrmEntityError, Transaction} from "..";
+import {DatastoreOrmOperationError, Transaction} from "..";
 import {BaseEntity} from "../BaseEntity";
 import {errorCodes} from "../enums/errorCodes";
 import {IArgvValues, IRequestResponse} from "../types";
@@ -15,7 +15,7 @@ export class EntityHelper<T extends typeof BaseEntity> {
         Promise<[InstanceType<T>, IRequestResponse]> {
         const id: number | string = (values as any).id;
         if (!id) {
-            throw new DatastoreOrmEntityError(`(${this.entityType.constructor.name}) Please provide an id for values. id must be non zero and non empty.`);
+            throw new DatastoreOrmOperationError(`(${this.entityType.constructor.name}) Please provide an id for values. id must be non zero and non empty.`);
         }
         const performanceHelper = new PerformanceHelper().start();
 
@@ -50,7 +50,7 @@ export class EntityHelper<T extends typeof BaseEntity> {
                     }
                     [entity] = await query2.filterAny("id", "=", id).runOnce();
                     if (!entity) {
-                        throw new DatastoreOrmEntityError(`(${this.entityType.constructor.name}) We could not find or create the entity.`);
+                        throw new DatastoreOrmOperationError(`(${this.entityType.constructor.name}) We could not find or create the entity.`);
                     }
 
                 } else {

@@ -3,10 +3,10 @@ import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
 import {Column} from "./decorators/Column";
 import {Entity} from "./decorators/Entity";
-import {DatastoreOrmEntityError} from "./errors/DatastoreOrmEntityError";
-import {DatastoreOrmSchemaError} from "./errors/DatastoreOrmSchemaError";
+import {DatastoreOrmDecoratorError} from "./errors/DatastoreOrmDecoratorError";
+import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {IncrementHelper} from "./helpers/IncrementHelper";
-import {RelationshipHelper} from "./helpers/RelationshipHelper";
+import {DescendentHelper} from "./helpers/DescendentHelper";
 import {Query} from "./Query";
 import {Transaction} from "./Transaction";
 import * as types from "./types";
@@ -18,10 +18,10 @@ export {
     BaseEntity,
     Column,
     Entity,
-    DatastoreOrmSchemaError,
-    DatastoreOrmEntityError,
+    DatastoreOrmDecoratorError,
+    DatastoreOrmOperationError,
     datastoreOrm,
     types,
     IncrementHelper,
-    RelationshipHelper,
+    DescendentHelper,
 };

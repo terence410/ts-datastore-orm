@@ -17,16 +17,28 @@ describe("General Test", () => {
         await Task.truncate();
     });
 
-    it("create entity", async () => {
+    it("create and entity", async () => {
+        // create
         const user = new User();
         user.id = 999;
         user.date = new Date();
         user.number = 100;
         await user.save();
 
+        // update
+        user.number = 101;
+        await user.save();
+
         // deprecated call
         const date = user.get("date");
         user.set("date", new Date());
+
+        // to json
+        const json = user.toJSON();
+        const values = user.getValues();
+
+        // delete
+        await user.delete();
     });
 
     it("allocate ids", async () => {

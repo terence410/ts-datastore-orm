@@ -3,7 +3,7 @@ import {ILockOptions, ILockResponse, IRequestResponse} from "../types";
 import {createMd5, generateRandomString, timeout} from "../utils";
 import {PerformanceHelper} from "./PerformanceHelper";
 
-let defaultOptions: ILockOptions = {expire: 1000, delay: 50, maxRetry: 0, quickRelease: true, throwReleaseError: false};
+let defaultOptions: ILockOptions = {expire: 5000, delay: 50, maxRetry: 0, quickRelease: true, throwReleaseError: false};
 
 @Entity({namespace: "datastoreorm", kind: "lock"})
 export class Lock extends BaseEntity {
@@ -25,14 +25,17 @@ export class LockHelper {
         defaultOptions = Object.assign(defaultOptions, lockOptions);
     }
 
+    public static async truncate() {
+        return await Lock.truncate();
+    }
+
     public static async execute<T extends any>(key: string, callback: (lockHelper: LockHelper) => Promise<T>,
                                                options: Partial<ILockOptions> = {}):
         Promise<[T, IRequestResponse]> {
 
         const performanceHelper = new PerformanceHelper().start();
-
-        const lockHelper = new LockHelper(key);
-        const [canLock] = await lockHelper.acquire(options);
+        const lockHelper = new LockHelper(key, options);
+        const [canLock] = await lockHelper.acquire();
 
         let result: any;
         if (canLock) {
@@ -40,7 +43,7 @@ export class LockHelper {
 
             // release the lock
             if (lockHelper.canRelease) {
-                if (lockHelper._quickRelease) {
+                if (lockHelper.options.quickRelease) {
                     lockHelper.release();
                 } else {
                     await lockHelper.release();
@@ -52,28 +55,22 @@ export class LockHelper {
     }
 
     public canRelease: boolean = false;
+    public options: ILockOptions;
     private _id: string;
     private _clientId: string;
-    private _quickRelease: boolean = false;
-    private _throwReleaseError: boolean = false;
 
-    constructor(public readonly key: string) {
+    constructor(public readonly key: string, options: Partial<ILockOptions> = {}) {
         this._clientId = generateRandomString(16);
         this._id = createMd5(key);
+        this.options = Object.assign(defaultOptions, options);
     }
 
-    public async acquire(options: Partial<ILockOptions> = {}): Promise<[boolean, ILockResponse]> {
+    public async acquire(): Promise<[boolean, ILockResponse]> {
         if (this.canRelease) {
             throw new Error(`(LockHelper) You can not acquire lock repeatedly. key: ${this.key}`);
         }
 
-        const maxRetry = options.maxRetry || defaultOptions.maxRetry;
-        const delay = options.delay || defaultOptions.delay;
-        const expire = options.expire || defaultOptions.expire;
         const performanceHelper = new PerformanceHelper().start();
-        this._quickRelease = options.quickRelease !== undefined ? options.quickRelease : defaultOptions.quickRelease;
-        this._throwReleaseError = options.throwReleaseError !== undefined ? options.throwReleaseError : defaultOptions.throwReleaseError;
-
         let retry = 0;
         let canLock = false;
         let isNewLock = false;
@@ -87,23 +84,24 @@ export class LockHelper {
                         lock.id = this._id;
                         lock.key = this.key;
                         lock.clientId = this._clientId;
-                        lock.expiredAt.setTime(now.getTime() + expire);
+                        lock.expiredAt.setTime(now.getTime() + this.options.expire);
                         transaction.save(lock);
                         return true;
 
                     } else if (now > lock.expiredAt) {
                         // update it
                         lock.clientId = this._clientId;
-                        lock.expiredAt.setTime(now.getTime() + expire);
+                        lock.expiredAt.setTime(now.getTime() + this.options.expire);
                         transaction.save(lock);
                         return false;
 
                     }
 
+                    // we cancel immediately since we don't have to save, this can skip commit call
                     transaction.rollback();
                 });
 
-                // we successfully locked
+                // we successfully acquired the lock
                 if (transactionResponse.hasCommit) {
                     canLock = true;
                     isNewLock = isNewLock1 as boolean;
@@ -115,9 +113,9 @@ export class LockHelper {
             }
 
             if (!canLock) {
-                await timeout(delay);
+                await timeout(this.options.delay);
             }
-        } while (retry++ < maxRetry);
+        } while (retry++ < this.options.maxRetry);
 
         if (!canLock) {
             throw new Error(`(LockHelper) Failed to acquire lock for the key: ${this.key}.`);
@@ -164,7 +162,7 @@ export class LockHelper {
             });
         } catch (err) {
             // discard transaction error
-            if (this._throwReleaseError) {
+            if (this.options.throwReleaseError) {
                 throw err;
             }
         }

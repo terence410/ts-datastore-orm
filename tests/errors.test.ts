@@ -1,4 +1,3 @@
-import { assert, expect } from "chai";
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";

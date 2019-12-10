@@ -1,7 +1,7 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
-import {DatastoreOrmEntityError} from "./errors/DatastoreOrmEntityError";
+import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
 import {
@@ -150,7 +150,7 @@ export class BaseEntity {
             // if this is not new or no auto generate id
             const idSchema = datastoreOrm.getEntityColumn(this.constructor, "id");
             if (!this.isNew || !idSchema.generateId) {
-                throw new DatastoreOrmEntityError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty. Example: public id: number = 0;`);
+                throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty. Example: public id: number = 0;`);
             }
 
             key = datastoreOrm.createKey(this.constructor);
@@ -170,7 +170,7 @@ export class BaseEntity {
     // useful for delete
     public getKey(): IKey {
         if (!this._id) {
-            throw new DatastoreOrmEntityError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty.`);
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty.`);
         }
 
         const key = datastoreOrm.createKey(this.constructor, this._id);
@@ -227,7 +227,7 @@ export class BaseEntity {
         const performanceHelper = new PerformanceHelper().start();
 
         if (this.isReadOnly) {
-            throw new DatastoreOrmEntityError(`(${this.constructor.name}) This entity is read only. id (${(this as any).id}).`);
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) This entity is read only. id (${(this as any).id}).`);
         }
 
         // save

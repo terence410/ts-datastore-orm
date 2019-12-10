@@ -55,7 +55,7 @@ async function main() {
 
 ```
 
-# Samples
+# Samples: Define Entity and general operation
 ```typescript
 import {
     BaseEntity,
@@ -63,9 +63,10 @@ import {
     Column,
     datastoreOrm,
     Entity,
-    IncrementHelper,
-    RelationshipHelper,
     Transaction,
+    IncrementHelper,
+    DescendentHelper,
+    LockHelper,
 } from "ts-datastore-orm";
 
 @Entity({namespace: "testing", kind: "user"})
@@ -174,6 +175,10 @@ async function ancestorExamples() {
         .run();
 }
 
+```
+
+# Samples: Query
+```typescript
 async function queryExamples() {
     const [user1, requestResponse1] = await User.query().runOnce();
     const [users1, requestResponse2] = await User.findMany([1, 2, 3, 4, 5]);
@@ -208,7 +213,10 @@ async function queryExamples() {
             //
         });
 }
+```
 
+# Samples: Transaction
+```typescript
 async function transaction1Examples() {
     const [taskGroup1, transactionResponse1] = await Transaction.execute(async transaction => {
         let taskGroup2: TaskGroup | undefined;
@@ -251,15 +259,30 @@ async function transaction2Examples() {
         await transaction1.rollback(); // can consider omit await for faster performance
     }
 }
+```
 
-async function relationshipHelperExamples() {
-    const [user1] = await User.create().save();
-    const relationshipHelper = new RelationshipHelper(user1);
-    const [taskGroup4, response9] = await relationshipHelper.get(TaskGroup);
-    const [taskGroup5, response10] = await relationshipHelper.getOrCreate(TaskGroup, {name: "hello"});
-    const [taskGroups1, response11] = await relationshipHelper.getMany(TaskGroup);
+# Samples: Relationship Helper
+Helps you to query descendant more easily, support transaction.
+```typescript
+async function descendentHelperExamples() {
+    const [user1] = await User.create({id: 1}).save();
+    const descendentHelper1 = new DescendentHelper(user1);
+    const [taskGroup1] = await descendentHelper1.findOne(TaskGroup);
+    const [taskGroups1] = await descendentHelper1.findMany(TaskGroup);
+
+    // use in transaction
+    const [_, transactionResponse1] = await Transaction.execute(async transaction => {
+        const [user2] = await transaction.find(User, 1);
+        const descendentHelper2 = new DescendentHelper(user1, transaction);
+        const [taskGroup2] = await descendentHelper2.findOne(TaskGroup);
+        const [taskGroups2] = await descendentHelper2.findMany(TaskGroup);
+    });
 }
+```
 
+# Samples: IncrementHelper
+Helps you to do atomic increment on an entity. Not suggest you use massively on single to avoid hotspots issue. 
+```typescript
 async function incrementHelperExamples() {
     const [user1] = await User.create().save();
     const incrementHelper = new IncrementHelper(user1);
@@ -267,6 +290,48 @@ async function incrementHelperExamples() {
     const latestValue = user1.number;
 }
 ```
+
+# Samples: LockHelper
+A simple and robust locking helper for distributed servers. Useful for small to medium server. If you have performance considering, please use some other tools like [Redis Lock](https://redis.io/topics/distlock). 
+```typescript
+async function lockHelperExamples() {
+    const key = "test1";
+    LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, quickRelease: true, throwReleaseError: false});
+    // expire: how long the lock will be expired
+    // maxRetry: the number of retry if it failed to acquire an lock
+    // delay: the delay in ms waiting for a retry
+    // quickRelease: release the lock in background without waiting the response from server (for performance optimization)
+    // throwReleaseError: whether you wanted to care any release error
+    
+    const lockHelper1 = new LockHelper(key, {expire: 1000, maxRetry: 5, delay: 100});
+    try {
+        const [isNewLock] = await lockHelper1.acquire();
+        // isNewLock = true // you are acquired an expired lock
+        const [isReleased] = await lockHelper1.release();
+        // isReleased = true // an lock is in released state (whether you released it or it is expired)
+        // isReleased = false // an lock still exist, in the case that your lock is expired and acquired by others
+    } catch (err) {
+        //
+    }
+
+    try {
+        const [resultString, response] = await LockHelper.execute(key, async (lockHelper2) => {
+            return "value";
+        }, {maxRetry: 2, quickRelease: true});
+    } catch (err) {
+        //
+    }
+    
+    // remove all locsk
+    await LockHelper.truncate();
+}
+```
+
+# Samples: EntityHelper
+```typescript
+// TBC
+```
+
 
 # More Samples
 Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tree/master/tests) directory.
@@ -289,7 +354,6 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 # To-do
 - consolidate all error messages and type (wrap all datastore errors)
 - enhance db administration (get all namespaces, kinds, properties) 
-- Unique Helper to do extra unique key mapping on entity
 - able to generate/deploy composite config
 - switching namespace
 - validate entity group are of same namespace

@@ -4,6 +4,7 @@ import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
 import {errorCodes} from "../src/enums/errorCodes";
+import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {timeout} from "../src/utils";
 
 @Entity({namespace: "testing", kind: "transactionTest"})
@@ -122,18 +123,16 @@ describe("Transaction Test", () => {
         }
 
         try {
-            const results = await Promise.all([
-                callback(5),
-                callback(5),
-                callback(5),
-            ]);
+            const total = 5;
+            const promises = Array(total).fill(0).map(x => callback(5));
+            const results = await Promise.all(promises);
 
             // we will see some transaction has retry
             const totalRetryItem = results.find(x => x.totalRetry > 0);
             assert.isDefined(totalRetryItem);
         } catch (err) {
-            assert.isTrue(false);
             console.log(err.message);
+            assert.isTrue(false);
         }
     });
 
@@ -143,7 +142,7 @@ describe("Transaction Test", () => {
         const readonly = async (readOnly: boolean) => {
             const [children1, transactionResponse] = await Transaction.execute(async transaction => {
                 const [user2] = await transaction.find(TransactionTest, user1.id);
-                await timeout(1000);
+                await timeout(500);
                 const [children2, requestResponse1] = await transaction.query(TransactionTestChild).setAncestor(user1).run();
                 return children2;
             }, {readOnly});
@@ -152,7 +151,7 @@ describe("Transaction Test", () => {
 
         const update = async () => {
             const [user, transactionResponse] = await Transaction.execute(async transaction => {
-                await timeout(500);
+                await timeout(250);
                 const child = TransactionTestChild.create();
                 child.setAncestor(user1);
                 transaction.save(child);
@@ -169,5 +168,26 @@ describe("Transaction Test", () => {
         const result2 = await Promise.all([readonly(false), update()]);
         const childrenB = result2[0];
         assert.equal(childrenB.length, 2);
+    });
+
+    it("massive read transaction", async () => {
+        const [user1] = await TransactionTest.create({name: "Terence"}).save();
+
+        const callback = async () => {
+            const [_, transactionResponse] = await Transaction.execute(async transaction => {
+                const [user2] = await transaction.find(TransactionTest, user1.id);
+            }, {maxRetry: 0});
+            return transactionResponse;
+        };
+
+        let total = 10;
+        const batch = 10;
+        for (let i = 0; i < batch; i++) {
+            const pp = new PerformanceHelper().start();
+            const promises = Array(total).fill(0).map(x => callback());
+            const results = await Promise.all(promises);
+            total++;
+            // console.log(pp.readResult(), total);
+        }
     });
 });

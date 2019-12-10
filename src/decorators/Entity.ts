@@ -1,6 +1,6 @@
 import {BaseEntity} from "../BaseEntity";
 import {datastoreOrm} from "../datastoreOrm";
-import {DatastoreOrmEntityError} from "../errors/DatastoreOrmEntityError";
+import {DatastoreOrmDecoratorError} from "../errors/DatastoreOrmDecoratorError";
 import {IEntityMeta, IEntityMetaBase} from "../types";
 
 export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
@@ -19,7 +19,7 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         if (subClassTarget !== BaseEntity) {
             const subClassEntityMeta = datastoreOrm.getEntityMeta(subClassTarget);
             if (subClassEntityMeta) {
-                throw new DatastoreOrmEntityError(`(${(target as any).name}) This entity is subclassing (${subClassTarget.name}) which already defined as an Entity.`);
+                throw new DatastoreOrmDecoratorError(`(${(target as any).name}) This entity is subclassing (${subClassTarget.name}) which already defined as an Entity.`);
             }
 
             const subClassColumns = datastoreOrm.getEntityColumns(subClassTarget);
@@ -34,11 +34,11 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         // check if we have a id column
         const idColumn = Object.keys(entityColumns).find(x => x === "id");
         if (!idColumn) {
-            throw new DatastoreOrmEntityError(`(${(target as any).name}) Entity must define an id column.`);
+            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity must define an id column.`);
         }
 
         if (!newEntityMeta.kind) {
-            throw new DatastoreOrmEntityError(`(${(target as any).name}) Entity must specific a kind.`);
+            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity must specific a kind.`);
         }
 
         // create exclude from indexes

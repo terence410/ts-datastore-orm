@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import {datastoreOrm} from "../datastoreOrm";
-import {DatastoreOrmSchemaError} from "../errors/DatastoreOrmSchemaError";
+import {DatastoreOrmDecoratorError} from "../errors/DatastoreOrmDecoratorError";
 import {IEntityColumn, IEntityColumnBase} from "../types";
 
 export function Column(entityColumn: Partial<IEntityColumnBase> = {}) {
@@ -19,7 +19,7 @@ export function Column(entityColumn: Partial<IEntityColumnBase> = {}) {
         // validate id type
         if (propertyKey === "id") {
             if (propertyType !== Number && propertyType !== String) {
-                throw new DatastoreOrmSchemaError(`(${target.constructor.name}) id must in the type of string or number.`);
+                throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) id must in the type of string or number.`);
             }
         }
 

@@ -72,36 +72,14 @@ export interface IEntityMeta extends  IEntityMetaBase {
 
 // region query
 
+export type IQueryStreamEventType = "data" | "info" | "error" | "end";
 export interface IQueryStreamEvent<T> {
-    on(type: "data", callback: (entity: T) => void): this;
-    on(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    on(type: "error", callback: (error: Error) => void): this;
-    on(type: "end", callback: () => void): this;
-
-    addListener(type: "data", callback: (entity: T) => void): this;
-    addListener(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    addListener(type: "error", callback: (error: Error) => void): this;
-    addListener(type: "end", callback: () => void): this;
-
-    removeListener(type: "data", callback: (entity: T) => void): this;
-    removeListener(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    removeListener(type: "error", callback: (error: Error) => void): this;
-    removeListener(type: "end", callback: () => void): this;
-
-    once(type: "data", callback: (entity: T) => void): this;
-    once(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    once(type: "error", callback: (error: Error) => void): this;
-    once(type: "end", callback: () => void): this;
-
-    off(type: "data", callback: (entity: T) => void): this;
-    off(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    off(type: "error", callback: (error: Error) => void): this;
-    off(type: "end", callback: () => void): this;
-
-    emit(type: "data", entity: T): void;
-    emit(type: "info", info: DatastoreQuery.RunQueryInfo): void;
-    emit(type: "error", error: Error): void;
-    emit(type: "end"): void;
+    on(type: IQueryStreamEventType, callback: (entity: T) => void): this;
+    addListener(type: IQueryStreamEventType, callback: (entity: T) => void): this;
+    removeListener(type: IQueryStreamEventType, callback: (entity: T) => void): this;
+    once(type: IQueryStreamEventType, callback: (entity: T) => void): this;
+    off(type: IQueryStreamEventType, callback: (entity: T) => void): this;
+    emit(type: IQueryStreamEventType, entity: T): void;
 }
 
 // endregion
