@@ -3,6 +3,7 @@ import * as DatastoreQuery from "@google-cloud/datastore/build/src/query";
 import {EventEmitter} from "events";
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
+import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Transaction} from "./Transaction";
 import {
@@ -21,10 +22,19 @@ export class Query<T extends typeof BaseEntity> {
     private _lastRunQueryInfo: DatastoreQuery.RunQueryInfo | undefined;
     private _ancestor: IKey | undefined;
     private _selectKey: boolean = false;
+    private _namespace = "";
     private _query: DatastoreQuery.Query;
 
     constructor(public readonly entityType: T, public readonly transaction?: Transaction) {
-        this._query = datastoreOrm.createQuery(this.entityType, this.transaction);
+        const entityMeta = datastoreOrm.getEntityMeta(this.entityType);
+        this._namespace = entityMeta.namespace;
+
+        if (transaction) {
+            this._query = transaction.datastoreTransaction.createQuery(entityMeta.namespace, entityMeta.kind);
+
+        } else {
+            this._query = datastoreOrm.getDatastore().createQuery(entityMeta.namespace, entityMeta.kind);
+        }
     }
 
     public hasNextPage(): boolean {
@@ -45,10 +55,22 @@ export class Query<T extends typeof BaseEntity> {
         return this;
     }
 
+    public setNamespace(value: string) {
+        this._query.namespace = value;
+        this._namespace = value;
+        return this;
+    }
+
     public setAncestor<R extends BaseEntity>(entity: R) {
-        const key = entity.getKey();
-        this._ancestor = key;
-        this._query.hasAncestor(key);
+        const ancestorKey = entity.getKey();
+
+        // check namespace
+        if (ancestorKey.namespace !== this._namespace) {
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the query namespace (${this._namespace}).`);
+        }
+
+        this._ancestor = ancestorKey;
+        this._query.hasAncestor(ancestorKey);
         return this;
     }
 
@@ -90,7 +112,7 @@ export class Query<T extends typeof BaseEntity> {
 
     public filter<K extends IArgvColumn<InstanceType<T>>>(column: K, operator: IOperator, value: IArgvValue<InstanceType<T>, K>) {
         if (column === "id") {
-            const key = datastoreOrm.createKey(this.entityType, value as any);
+            const key = datastoreOrm.createKey(this._namespace, [this.entityType, value as any]);
             if (this._ancestor) {
                 key.parent = this._ancestor;
             }

@@ -127,7 +127,7 @@ describe("General Test: Entity Group", () => {
         const [taskGroups2] = await TaskGroup.query().filterKey("=", taskGroup1.getKey()).run();
         assert.equal(taskGroups2.length, 1);
 
-        const key = datastoreOrm.createKey(User, user1.id, TaskGroup, taskGroup1.id);
+        const key = datastoreOrm.createKey([User, user1.id, TaskGroup, taskGroup1.id]);
         const [taskGroups3] = await TaskGroup.query().filterKey("=", key).run();
         assert.equal(taskGroups3.length, 1);
     });

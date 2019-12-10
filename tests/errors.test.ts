@@ -18,4 +18,10 @@ describe("Errors Test", () => {
     it("truncate", async () => {
         const [total, requestResponse] = await ErrorTest.truncate();
     });
+
+    it("pendings", async () => {
+        // update existing entity id
+        // update existing entity namespace
+        // ancestor with different namespace
+    });
 });

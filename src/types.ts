@@ -14,6 +14,7 @@ export type IConfig = {
 
 // region datastore related structure
 
+export type IKeyType = number | string;
 export type IKey = DatastoreEntity.entity.Key;
 export type IOperator = DatastoreQuery.Operator;
 export type IOrderOptions = DatastoreQuery.OrderOptions;
@@ -24,12 +25,23 @@ export type ISaveResult = {
     }>;
 };
 
+export type IStats = {
+    timestamp: Date,
+    builtin_index_bytes: number,
+    composite_index_bytes: number,
+    count: number,
+    bytes: number,
+    entity_bytes: number,
+    builtin_index_count: number,
+    composite_index_count: number,
+};
+
 // endregion
 
 // region response
 
 export type ITransactionResponse = {
-    hasCommit: boolean;
+    hasCommitted: boolean;
     totalRetry: number;
     executionTime: number;
     savedEntities: BaseEntity[];

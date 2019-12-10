@@ -27,7 +27,7 @@ export class Transaction {
         // return result
         let result: any;
         const transactionResponse: ITransactionResponse = {
-            hasCommit: false,
+            hasCommitted: false,
             totalRetry: 0,
             executionTime: 0,
             savedEntities: [],
@@ -54,7 +54,7 @@ export class Transaction {
                 // check if user has cancelled the commit
                 if (!transaction.skipCommit) {
                     await transaction.commit();
-                    transactionResponse.hasCommit = true;
+                    transactionResponse.hasCommitted = true;
                 }
 
                 transactionResponse.savedEntities = transaction.savedEntities;
@@ -140,16 +140,36 @@ export class Transaction {
         return new Query(entityType, this);
     }
 
-    public async find<T extends typeof BaseEntity>(entityType: T, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
-        const [entities, requestResponse] = await this.findMany(entityType, [id]);
+    public async find<T extends typeof BaseEntity>(entityType: T, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]>;
+    public async find<T extends typeof BaseEntity>(entityType: T, namespace: string, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]>;
+    public async find<T extends typeof BaseEntity>(entityType: T, ...argv: any[]): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
+        // parse argv
+        let id = argv[0] as IArgvId;
+        let namespace = "";
+        if (argv.length > 1) {
+            namespace = argv[0];
+            id = argv[1];
+        }
+
+        const [entities, requestResponse] = await this.findMany(entityType, namespace, [id]);
         return [entities.length ? entities[0] : undefined, requestResponse];
     }
 
-    public async findMany<T extends typeof BaseEntity>(entityType: T, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
+    public async findMany<T extends typeof BaseEntity>(entityType: T, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]>;
+    public async findMany<T extends typeof BaseEntity>(entityType: T, namespace: string, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]>;
+    public async findMany<T extends typeof BaseEntity>(entityType: T, ...argv: any[]): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
+        // parse argv
+        let ids = argv[0] as IArgvId[];
+        let namespace = "";
+        if (argv.length > 1) {
+            namespace = argv[0];
+            ids = argv[1];
+        }
+
         // get the keys
-        const keys = ids.map(x => datastoreOrm.createKey(entityType, x));
+        const keys = ids.map(x => datastoreOrm.createKey(namespace, [entityType, x]));
         const [results] = await this.datastoreTransaction.get(keys);
 
         // convert into entities
@@ -197,12 +217,21 @@ export class Transaction {
         this.deletedEntities = this.deletedEntities.concat(entities);
     }
 
-    public async allocateIds<T extends typeof BaseEntity>(entityType: T, total = 1): Promise<[number[], IRequestResponse]> {
-        // this.datastoreTransaction.allocateIds();
+    public async allocateIds<T extends typeof BaseEntity>(entityType: T, total: number): Promise<[number[], IRequestResponse]>;
+    public async allocateIds<T extends typeof BaseEntity>(entityType: T, namespace: string, total: number): Promise<[number[], IRequestResponse]>;
+    public async allocateIds<T extends typeof BaseEntity>(entityType: T, ...argv: any[]): Promise<[number[], IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
+        // parse argv
+        let total = argv[0] as number;
+        let namespace = "";
+        if (argv.length > 1) {
+            namespace = argv[0];
+            total = argv[1];
+        }
+
         const datastore = datastoreOrm.getDatastore();
-        const key = datastoreOrm.createKey(entityType);
+        const key = datastoreOrm.createKey(namespace, [entityType]);
         const [keys] =  await this.datastoreTransaction.allocateIds(key, {allocations: total});
         const ids = keys.map(x => Number(x.id));
 

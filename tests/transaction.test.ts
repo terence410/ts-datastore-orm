@@ -44,7 +44,7 @@ describe("Transaction Test", () => {
             if (users1.length > 1) {
                 const user1a = users1[0];
                 const user2a = users1[1];
-                const [ids] = await transaction.allocateIds(TransactionTest);
+                const [ids] = await transaction.allocateIds(TransactionTest, 1);
                 child2 = TransactionTestChild.create({name: "Task Group", id: ids[0]});
                 child2.setAncestor(user1a);
                 transaction.save(child2);
@@ -91,7 +91,7 @@ describe("Transaction Test", () => {
         const [_, transactionResponse] = await Transaction.execute(async transaction => {
             transaction.rollback();
         });
-        assert.isFalse(transactionResponse.hasCommit);
+        assert.isFalse(transactionResponse.hasCommitted);
     });
 
     it("conflict transaction", async () => {

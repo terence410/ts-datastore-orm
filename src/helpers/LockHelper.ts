@@ -102,7 +102,7 @@ export class LockHelper {
                 });
 
                 // we successfully acquired the lock
-                if (transactionResponse.hasCommit) {
+                if (transactionResponse.hasCommitted) {
                     canLock = true;
                     isNewLock = isNewLock1 as boolean;
                     break;

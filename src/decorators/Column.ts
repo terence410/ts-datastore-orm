@@ -19,7 +19,13 @@ export function Column(entityColumn: Partial<IEntityColumnBase> = {}) {
         // validate id type
         if (propertyKey === "id") {
             if (propertyType !== Number && propertyType !== String) {
-                throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) id must in the type of string or number.`);
+                throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) id must in the type of string or number. Current type is (${propertyType}).`);
+            }
+
+            if (newEntityColumn.generateId) {
+                if (propertyType !== Number) {
+                    throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) generateId must in the type of number. Current type is (${propertyType}).`);
+                }
             }
         }
 

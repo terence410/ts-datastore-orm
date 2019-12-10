@@ -5,9 +5,9 @@ import {
     Batcher,
     Column,
     datastoreOrm,
+    DescendentHelper,
     Entity,
     IncrementHelper,
-    DescendentHelper,
     Transaction,
 } from "./src/index";
 
@@ -49,14 +49,15 @@ export class TaskGroup extends BaseEntity {
 
 async function operationExamples() {
     await User.truncate();
-    const [ids] = await User.allocateIds();
+    const [ids] = await User.allocateIds(1);
 }
 
 async function keyExamples() {
-    const key1 = User.createKey(1);
-    const key2 = datastoreOrm.createKey(User, 1);
-    const key3 = datastoreOrm.createKey([User, 1]);
-    const key4 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
+    const key1 = datastoreOrm.createKey([User, 1]);
+    const key2 = datastoreOrm.createKey("namespace", [User, 1]);
+    const key3 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
+    const key4 = User.create({id: 1}).getKey();
+    const key5 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
 }
 
 async function entityExamples() {
@@ -100,14 +101,14 @@ async function ancestorExamples() {
         .filterKey("=", datastoreOrm.getDatastore().key(["user1", 1, "taskGroup", 1]))
         .runOnce();
 
-    const key1 = datastoreOrm.createKey(User, 1);
-    const key2 = datastoreOrm.createKey(TaskGroup, 1);
+    const key1 = datastoreOrm.createKey([User, 1]);
+    const key2 = datastoreOrm.createKey([TaskGroup, 1]);
     key2.parent = key1;
     const [taskGroup5] = await TaskGroup.query()
         .filterKey("=", key2)
         .runOnce();
 
-    const key3 = datastoreOrm.createKey(User, 1, TaskGroup, 1);
+    const key3 = datastoreOrm.createKey([User, 1, TaskGroup, 1]);
     const [taskGroup6] = await TaskGroup.query()
         .filterKey("=", key3)
         .runOnce();
@@ -168,7 +169,7 @@ async function transaction1Examples() {
         }
     }, {maxRetry: 5});
 
-    if (transactionResponse1.hasCommit && taskGroup1) {
+    if (transactionResponse1.hasCommitted && taskGroup1) {
         const taskGroup3Id = taskGroup1.id;
         for (const entity of transactionResponse1.savedEntities) {
             if (entity instanceof TaskGroup) {

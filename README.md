@@ -11,7 +11,7 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
 - Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
 - Support default values. This will be useful if you decided to add extra columns to an entity.
 - Provide execution time for every request.
-- Provides various helpers to achieve simple, but tedious tasks. Such as increment and query child entities.  
+- LockHelper: Simple but robust distributed lock for atomic updates. Useful for small to medium server without worry of scaling.
 
 # Project Setup
 - npm install ts-datastore-orm
@@ -107,14 +107,15 @@ export class TaskGroup extends BaseEntity {
 
 async function operationExamples() {
     await User.truncate();
-    const [ids] = await User.allocateIds();
+    const [ids] = await User.allocateIds(1);
 }
 
 async function keyExamples() {
-    const key1 = User.createKey(1);
-    const key2 = datastoreOrm.createKey(User, 1);
-    const key3 = datastoreOrm.createKey([User, 1]);
-    const key4 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
+    const key1 = datastoreOrm.createKey([User, 1]);
+    const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
+    const key3 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
+    const key4 = User.create({id: 1}).getKey();
+    const key5 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
 }
 
 async function entityExamples() {
@@ -158,14 +159,14 @@ async function ancestorExamples() {
         .filterKey("=", datastoreOrm.getDatastore().key(["user1", 1, "taskGroup", 1]))
         .runOnce();
 
-    const key1 = datastoreOrm.createKey(User, 1);
-    const key2 = datastoreOrm.createKey(TaskGroup, 1);
+    const key1 = datastoreOrm.createKey([User, 1]);
+    const key2 = datastoreOrm.createKey([TaskGroup, 1]);
     key2.parent = key1;
     const [taskGroup5] = await TaskGroup.query()
         .filterKey("=", key2)
         .runOnce();
 
-    const key3 = datastoreOrm.createKey(User, 1, TaskGroup, 1);
+    const key3 = datastoreOrm.createKey([User, 1, TaskGroup, 1]);
     const [taskGroup6] = await TaskGroup.query()
         .filterKey("=", key3)
         .runOnce();
@@ -292,7 +293,8 @@ async function incrementHelperExamples() {
 ```
 
 # Samples: LockHelper
-A simple and robust locking helper for distributed servers. Useful for small to medium server. If you have performance considering, please use some other tools like [Redis Lock](https://redis.io/topics/distlock). 
+A simple and robust locking helper for distributed servers. Useful for small to medium server. 
+If you have performance considering, please use some other tools like [Redis Lock](https://redis.io/topics/distlock). 
 ```typescript
 async function lockHelperExamples() {
     const key = "test1";
@@ -338,12 +340,15 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 
 | Sample                      | Source Code                       | 
 | --------------------------- | --------------------------------- |
-| Concepts | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/general.test.ts) |
+| Basics | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/general.test.ts) |
 | Transactions | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/transaction.test.ts) |
 | Query | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/query.test.ts) |
-| Helpers | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers.test.ts) |
+| Namespace | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/namespace.test.ts) |
+| Subclass | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/subclass.test.ts) |
 | Errors | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/errors.test.ts) |
 | Admin | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/admin.test.ts) |
+| Helpers | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers.test.ts) |
+| LockHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/lockHelper.test.ts) |
 
 # Useful links
 - https://googleapis.dev/nodejs/datastore/5.0.0/index.html
@@ -352,10 +357,5 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://www.npmjs.com/package/@google-cloud/firestore
 
 # To-do
-- consolidate all error messages and type (wrap all datastore errors)
-- enhance db administration (get all namespaces, kinds, properties) 
+- consolidate all error messages and type (wrap all datastore errors and handle friendly errors)
 - able to generate/deploy composite config
-- switching namespace
-- validate entity group are of same namespace
-- friendlyError will by pass internal errors
-- enforce type cast for column (if data return from server is different)

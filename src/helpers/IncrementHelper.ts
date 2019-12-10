@@ -26,7 +26,7 @@ export class IncrementHelper<R extends typeof BaseEntity, T extends InstanceType
             }
         }, options);
 
-        if (transactionResponse.hasCommit) {
+        if (transactionResponse.hasCommitted) {
             (this.entity as any)[column] = resultValue as number;
             return [resultValue as number, transactionResponse];
         } else {
