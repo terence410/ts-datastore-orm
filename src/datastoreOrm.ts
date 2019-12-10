@@ -11,6 +11,7 @@ import {IEntityColumn, IEntityMeta, IKey, ISaveResult, IStats} from "./types";
 class DatastoreOrm {
     private _entityMetas = new Map<object, IEntityMeta>();
     private _entityColumns = new Map<object, {[key: string]: IEntityColumn}>();
+    private _kindToEntity = new Map<string, object>();
     private _dataStore: Datastore.Datastore;
 
     constructor() {
@@ -33,6 +34,7 @@ class DatastoreOrm {
     public createKey(namespaec: string, path: any[]): IKey;
     public createKey(path: any[]): IKey;
     public createKey(...argv: any[]): IKey {
+
         const keyPaths: Array<string | number> = [];
         let path = argv[0];
         let namespace = "";
@@ -69,9 +71,7 @@ class DatastoreOrm {
 
         // create key with namespace
         const datastore = this.getDatastore();
-        const key = datastore.key({namespace, path: keyPaths});
-
-        return key;
+        return datastore.key({namespace, path: keyPaths});
     }
 
     // endregion
@@ -79,9 +79,15 @@ class DatastoreOrm {
     // region public internal methods
 
     /** @internal */
+    public getEntityByKind(kind: string): object | undefined {
+        return this._kindToEntity.get(kind);
+    }
+
+    /** @internal */
     public addEntity(target: object, entityMeta: IEntityMeta) {
         if (!this._entityMetas.has(target)) {
             this._entityMetas.set(target, entityMeta);
+            this._kindToEntity.set(entityMeta.kind, target);
         }
     }
 
@@ -144,41 +150,6 @@ class DatastoreOrm {
         return keys;
     }
 
-    /** @internal */
-    public isValidAncestorKey(target: object, ancestorKey: IKey | undefined) {
-        const entityMeta = datastoreOrm.getEntityMeta(target);
-        // if we need ancestor
-        if (entityMeta.ancestors.length) {
-            if (!ancestorKey) {
-                const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
-                throw new DatastoreOrmOperationError(`(${(target as any).name}) This entity require ancestors of (${names}).`);
-
-            } else {
-                let isValid = false;
-                for (const ancestor of entityMeta.ancestors) {
-                    const ancestorEntityMeta = datastoreOrm.getEntityMeta(ancestor);
-                    if (ancestorEntityMeta.kind === ancestorKey.kind) {
-                        isValid = true;
-                        break;
-                    }
-                }
-
-                if (!isValid) {
-                    const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
-                    let errorMessage = `(${(target as any).name}) This entity require ancestors of (${names}), `;
-                    errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
-                    throw new DatastoreOrmOperationError(errorMessage);
-                }
-            }
-        } else {
-            // if we don't have ancestor, but an ancestor key is provided
-            if (ancestorKey) {
-                let errorMessage = `(${(target as any).name}) This entity does not require any ancestor, `;
-                errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
-                throw new DatastoreOrmOperationError(errorMessage);
-            }
-        }
-    }
 
     // endregion
     
@@ -201,7 +172,6 @@ class DatastoreOrm {
         const [results] = await datastore.runQuery(query);
         return results.map(x => x[datastore.KEY].name);
     }
-
 
     public async getEntityProperties(entityType: object) {
         const entityMeta = this.getEntityMeta(entityType);

@@ -1,4 +1,5 @@
 import {BaseEntity, Column, Entity, Transaction} from "..";
+import {DatastoreOrmLockError} from "../errors/DatastoreOrmLockError";
 import {ILockOptions, ILockResponse, IRequestResponse} from "../types";
 import {createMd5, generateRandomString, timeout} from "../utils";
 import {PerformanceHelper} from "./PerformanceHelper";
@@ -67,7 +68,7 @@ export class LockHelper {
 
     public async acquire(): Promise<[boolean, ILockResponse]> {
         if (this.canRelease) {
-            throw new Error(`(LockHelper) You can not acquire lock repeatedly. key: ${this.key}`);
+            throw new DatastoreOrmLockError(`(LockHelper) You can not acquire a lock repeatedly. key (${this.key}).`);
         }
 
         const performanceHelper = new PerformanceHelper().start();

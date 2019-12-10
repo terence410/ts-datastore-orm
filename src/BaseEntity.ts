@@ -3,6 +3,7 @@ import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
+import {parser} from "./parser";
 import {Query} from "./Query";
 import {
     IArgvColumn,
@@ -176,17 +177,16 @@ export class BaseEntity {
     // this will validate the ancestor
     /** @internal */
     public getSaveDataKey(): IKey {
-        datastoreOrm.isValidAncestorKey(this.constructor, this._ancestorKey);
+        this._validateAncestorKey();
 
+        // get the key
         let key: IKey;
-
         if (!this._id) {
             // if this is not new or no auto generate id
-            const idSchema = datastoreOrm.getEntityColumn(this.constructor, "id");
-            if (!this.isNew || !idSchema.generateId) {
-                throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty. Example: public id: number = 0;`);
+            const entityColumn = datastoreOrm.getEntityColumn(this.constructor, "id");
+            if (!this.isNew || !entityColumn.generateId) {
+                throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty.`);
             }
-
             key = datastoreOrm.createKey(this._namespace, [this.constructor]);
         } else {
             key = datastoreOrm.createKey(this._namespace, [this.constructor, this._id]);
@@ -252,7 +252,7 @@ export class BaseEntity {
 
         // check namespace
         if (ancestorKey.namespace !== this._namespace) {
-            throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the entity namespace (${this._namespace}).`);
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the entity namespace (${this._namespace}). `);
         }
 
         this._ancestorKey = ancestorKey;
@@ -261,7 +261,7 @@ export class BaseEntity {
 
     public setNamespace(value: string) {
         if (!this._isNew) {
-            throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot update namespace of an existing entity.`);
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot update namespace of an existing entity. id (${(this as any).id}).`);
         }
 
         this._namespace = value;
@@ -276,7 +276,7 @@ export class BaseEntity {
         const performanceHelper = new PerformanceHelper().start();
 
         if (this.isReadOnly) {
-            throw new DatastoreOrmOperationError(`(${this.constructor.name}) This entity is read only. id (${(this as any).id}).`);
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) Entity is read only. id (${(this as any).id}).`);
         }
 
         // save
@@ -287,11 +287,14 @@ export class BaseEntity {
             // update isNew = false no matter what
             if (this.isNew) {
                 this.isNew = false;
+
                 const [insertResult] = await datastore.insert(saveData);
-                const newKeys = datastoreOrm.extractMutationKeys(insertResult as ISaveResult);
-                if (newKeys.length) {
-                    const newKey = newKeys[0];
-                    if (!this._id) {
+
+                // if we do not have id, this is an auto generated id, we will try to get it
+                if (!this._id) {
+                    const newKeys = datastoreOrm.extractMutationKeys(insertResult as ISaveResult);
+                    if (newKeys.length) {
+                        const newKey = newKeys[0];
                         this._set("id", Number(newKey.id));
                     }
                 }
@@ -329,6 +332,43 @@ export class BaseEntity {
 
     // region private methods
 
+    /** @internal */
+    private _validateAncestorKey() {
+        const target = this.constructor;
+        const entityMeta = datastoreOrm.getEntityMeta(target);
+        // if we need ancestor
+        if (entityMeta.ancestors.length) {
+            if (!this._ancestorKey) {
+                const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
+                throw new DatastoreOrmOperationError(`(${(target as any).name}) Entity requires ancestors of (${names}).`);
+
+            } else {
+                let isValid = false;
+                for (const ancestor of entityMeta.ancestors) {
+                    const ancestorEntityMeta = datastoreOrm.getEntityMeta(ancestor);
+                    if (ancestorEntityMeta.kind === this._ancestorKey.kind) {
+                        isValid = true;
+                        break;
+                    }
+                }
+
+                if (!isValid) {
+                    const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
+                    let errorMessage = `(${(target as any).name}) Entity requires ancestors of (${names}), `;
+                    errorMessage += `but the current ancestor kind is (${this._ancestorKey.kind}).`;
+                    throw new DatastoreOrmOperationError(errorMessage);
+                }
+            }
+        } else {
+            // if we don't have ancestor, but an ancestor key is provided
+            if (this._ancestorKey) {
+                let errorMessage = `(${(target as any).name}) Entity does not require any ancestor, `;
+                errorMessage += `but the current ancestor kind is (${this._ancestorKey.kind}).`;
+                throw new DatastoreOrmOperationError(errorMessage);
+            }
+        }
+    }
+
     // endregion
 
     // region private methods: value get / set
@@ -342,6 +382,11 @@ export class BaseEntity {
     }
 
     private _set(column: string, value: any) {
+        const entityColumn = datastoreOrm.getEntityColumn(this.constructor, column);
+        if (entityColumn.cast) {
+            value = parser.castValue(value, entityColumn.cast);
+        }
+
         if (column === "id") {
             // if we already have id and this is now a new entity, block for updating
             if (this._id && !this._isNew) {

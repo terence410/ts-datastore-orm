@@ -19,7 +19,7 @@ export class Batcher {
         // check any thing are just read only
         const readyOnlyEntity = entities.find(x => x.isReadOnly);
         if (readyOnlyEntity) {
-            throw new DatastoreOrmOperationError(`(${readyOnlyEntity.constructor.name}) This entity is read only. id (${(readyOnlyEntity as any).id}).`);
+            throw new DatastoreOrmOperationError(`(${readyOnlyEntity.constructor.name}) Entity is read only. id (${(readyOnlyEntity as any).id}).`);
         }
 
         // insert

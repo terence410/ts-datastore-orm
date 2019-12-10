@@ -192,7 +192,7 @@ describe("Query Test", () => {
                 await entity.save();
                 assert.isTrue(false);
             } catch (err) {
-                assert.isTrue(/.*This entity is read only.*/.test(err.message));
+                assert.isTrue(/Entity is read only/.test(err.message));
             }
         }
     });

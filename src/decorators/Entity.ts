@@ -1,25 +1,33 @@
 import {BaseEntity} from "../BaseEntity";
+import {configLoader} from "../configLoader";
 import {datastoreOrm} from "../datastoreOrm";
 import {DatastoreOrmDecoratorError} from "../errors/DatastoreOrmDecoratorError";
 import {IEntityMeta, IEntityMetaBase} from "../types";
 
 export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
     return (target: object) => {
+        const config = configLoader.getConfig();
         // set default values
         let newEntityMeta: IEntityMeta = {
-            namespace: "",
+            namespace: config.namespace,
             kind: "",
             ancestors: [],
             excludeFromIndexes: [],
         };
         newEntityMeta = Object.assign(newEntityMeta, entityMeta);
 
+        // check if has existing kind
+        const existEntityType = datastoreOrm.getEntityByKind(newEntityMeta.kind);
+        if (existEntityType) {
+            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity with kind (${newEntityMeta.kind}) is already used by another Entity (${(existEntityType as any).name}).`);
+        }
+
         // it has a subclass, add all it's column
         const subClassTarget = Object.getPrototypeOf(target);
         if (subClassTarget !== BaseEntity) {
             const subClassEntityMeta = datastoreOrm.getEntityMeta(subClassTarget);
             if (subClassEntityMeta) {
-                throw new DatastoreOrmDecoratorError(`(${(target as any).name}) This entity is subclassing (${subClassTarget.name}) which already defined as an Entity.`);
+                throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity is subclassing (${subClassTarget.name}) which is already defined as an Entity.`);
             }
 
             const subClassColumns = datastoreOrm.getEntityColumns(subClassTarget);
@@ -38,7 +46,7 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         }
 
         if (!newEntityMeta.kind) {
-            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity must specific a kind.`);
+            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity must define a kind.`);
         }
 
         // create exclude from indexes

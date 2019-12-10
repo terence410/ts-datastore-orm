@@ -10,7 +10,7 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
 - Covering all features of datastore: query, transaction, ancestor, index, allocateIds, namespace, etc..
 - Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
 - Support default values. This will be useful if you decided to add extra columns to an entity.
-- Provide execution time for every request.
+- Provide execution time for every request. It only take up around 0.3s for 1 million measurements. 
 - LockHelper: Simple but robust distributed lock for atomic updates. Useful for small to medium server without worry of scaling.
 
 # Project Setup
@@ -34,6 +34,7 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
 {
   "keyFilename": "datastoreServiceAccount.json",
   "friendlyError": true, // for easier debugging of promise
+  "namespaec": "namespace" // default namespace for the entity
 }
 ```
 
@@ -343,6 +344,7 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 | Basics | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/general.test.ts) |
 | Transactions | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/transaction.test.ts) |
 | Query | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/query.test.ts) |
+| Cast | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/cast.test.ts) |
 | Namespace | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/namespace.test.ts) |
 | Subclass | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/subclass.test.ts) |
 | Errors | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/errors.test.ts) |
@@ -359,3 +361,6 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 # To-do
 - consolidate all error messages and type (wrap all datastore errors and handle friendly errors)
 - able to generate/deploy composite config
+- RankingHelper
+- UnqiueKeyHelper
+- find, findMany can find keys directly (to support ancestor)

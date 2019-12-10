@@ -13,18 +13,19 @@ export function Column(entityColumn: Partial<IEntityColumnBase> = {}) {
             index: false,
             excludeFromIndexes: [],
             type: propertyType,
+            cast: null,
         };
         newEntityColumn = Object.assign(newEntityColumn, entityColumn);
 
         // validate id type
         if (propertyKey === "id") {
             if (propertyType !== Number && propertyType !== String) {
-                throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) id must in the type of string or number. Current type is (${propertyType}).`);
+                throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) id must be in the type of string or number. Current type is (${propertyType.name}).`);
             }
 
             if (newEntityColumn.generateId) {
                 if (propertyType !== Number) {
-                    throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) generateId must in the type of number. Current type is (${propertyType}).`);
+                    throw new DatastoreOrmDecoratorError(`(${target.constructor.name}) generateId must be in the type of number. Current type is (${propertyType.name}).`);
                 }
             }
         }

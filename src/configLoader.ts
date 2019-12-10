@@ -1,11 +1,24 @@
 import * as fs from "fs";
 import * as path from "path";
+import {DatastoreOrmDecoratorError} from "./errors/DatastoreOrmDecoratorError";
 import {IConfig} from "./types";
 
 class ConfigLoader {
-    private _config!: IConfig;
+    private _initialized = false;
+    private _config: IConfig = {keyFilename: "", friendlyError: false, namespace: ""};
 
-    public getConfigFile(): string {
+    public getConfig() {
+        if (!this._initialized) {
+            const rawData = fs.readFileSync(this._getConfigFile());
+            this._config = Object.assign(this._config, JSON.parse(rawData.toString()) as IConfig);
+            this._initialized = true;
+        }
+
+        return this._config;
+    }
+
+    /** @internal */
+    private _getConfigFile(): string {
         let configFiles = [`datastoreorm.default.json`];
 
         if (process.env.NODE_ENV) {
@@ -26,16 +39,7 @@ class ConfigLoader {
             }
         }
 
-        throw Error(`Config file cannot not be found on the paths: ${configFiles.join(", ")}.`);
-    }
-
-    public getConfig() {
-        if (!this._config) {
-            const rawData = fs.readFileSync(this.getConfigFile());
-            this._config = JSON.parse(rawData.toString()) as IConfig;
-        }
-
-        return this._config;
+        throw new DatastoreOrmDecoratorError(`Config file cannot not be found on the paths: ${configFiles.join(", ")}.`);
     }
 }
 

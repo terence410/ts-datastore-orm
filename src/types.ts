@@ -7,7 +7,7 @@ import {BaseEntity} from "./BaseEntity";
 export type IConfig = {
     keyFilename: string;
     friendlyError: boolean;
-    transaction: {delay: number};
+    namespace: string;
 };
 
 // endregion
@@ -66,8 +66,9 @@ export interface IEntityColumnBase {
     generateId: boolean;
     index: boolean;
     excludeFromIndexes: string[];
+    cast: ((value: string) => any) | null;
 }
-export interface IEntityColumn extends IEntityColumnBase{
+export interface IEntityColumn extends IEntityColumnBase {
     type: any;
 }
 export interface IEntityMetaBase {

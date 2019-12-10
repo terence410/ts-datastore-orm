@@ -17,11 +17,11 @@ describe("General Test", () => {
         await Task.truncate();
     });
 
-    it("create and entity", async () => {
+    it("create entity", async () => {
         // create
+        const now = new Date();
         const user = new User();
         user.id = 999;
-        user.date = new Date();
         user.number = 100;
         await user.save();
 
@@ -39,6 +39,27 @@ describe("General Test", () => {
 
         // delete
         await user.delete();
+    });
+
+    it("create and read entity", async () => {
+        // create
+        const values = {
+            date: new Date(),
+            number: Math.random(),
+            array: [1, 2, 3],
+            string: "abc",
+            buffer: Buffer.alloc(10),
+            object: {name: "Terence"},
+        };
+        const user = User.create(values);
+        await user.save();
+        
+        const [foundUser] = await User.find(user.id);
+        assert.isDefined(foundUser);
+        if (foundUser) {
+            assert.deepEqual(user.getValues(), foundUser.getValues());
+            assert.deepEqual(foundUser.getValues(), Object.assign(values, {id: user.id}));
+        }
     });
 
     it("allocate ids", async () => {
@@ -132,3 +153,4 @@ describe("General Test: Entity Group", () => {
         assert.equal(taskGroups3.length, 1);
     });
 });
+
