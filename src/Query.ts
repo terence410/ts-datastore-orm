@@ -74,12 +74,6 @@ export class Query<T extends typeof BaseEntity> {
         return this;
     }
 
-    public setAncestorKey(key: IKey) {
-        this._ancestor = key;
-        this._query.hasAncestor(key);
-        return this;
-    }
-
     public limit(value: number) {
         this._query.limit(value);
         return this;
@@ -112,7 +106,7 @@ export class Query<T extends typeof BaseEntity> {
 
     public filter<K extends IArgvColumn<InstanceType<T>>>(column: K, operator: IOperator, value: IArgvValue<InstanceType<T>, K>) {
         if (column === "id") {
-            const key = datastoreOrm.createKey(this._namespace, [this.entityType, value as any]);
+            const key = datastoreOrm.createKey({namespace: this._namespace, path: [this.entityType, value as any]});
             if (this._ancestor) {
                 key.parent = this._ancestor;
             }

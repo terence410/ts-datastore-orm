@@ -107,10 +107,19 @@ describe("General Test: Batcher", () => {
         const entities = Array(total).fill(0).map((x, i) => {
             return User.create({number: i});
         });
+
+        // insert
         await batcher.saveMany(entities);
         const [users1] = await User.findMany(entities.map(x => x.id));
         assert.equal(users1.length, total);
 
+        // updates
+        entities.forEach(x => {
+            x.number = Math.random();
+        });
+        await batcher.saveMany(entities);
+
+        // delete
         await batcher.deleteMany(entities);
         const [users2] = await User.findMany(entities.map(x => x.id));
         assert.equal(users2.length, 0);
@@ -151,6 +160,12 @@ describe("General Test: Entity Group", () => {
         const key = datastoreOrm.createKey([User, user1.id, TaskGroup, taskGroup1.id]);
         const [taskGroups3] = await TaskGroup.query().filterKey("=", key).run();
         assert.equal(taskGroups3.length, 1);
+        
+        // find many
+        const [taskGroups4] = await TaskGroup.findMany({ancestor: user1, ids: [1, 2]});
+        assert.equal(taskGroups4.length, 1);
+
+        const [task3] = await Task.find({ancestor: taskGroup1, id: 1});
+        assert.isDefined(task3);
     });
 });
-

@@ -5,8 +5,7 @@ import {configLoader} from "./configLoader";
 import {namespaceStats} from "./enums/namespaceStats";
 import {stats} from "./enums/stats";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
-import {Transaction} from "./Transaction";
-import {IEntityColumn, IEntityMeta, IKey, ISaveResult, IStats} from "./types";
+import {IArgvCreateKey, IEntityColumn, IEntityMeta, IKey, ISaveResult, IStats} from "./types";
 
 class DatastoreOrm {
     private _entityMetas = new Map<object, IEntityMeta>();
@@ -31,16 +30,16 @@ class DatastoreOrm {
         }
     }
 
-    public createKey(namespaec: string, path: any[]): IKey;
-    public createKey(path: any[]): IKey;
-    public createKey(...argv: any[]): IKey {
-
+    public createKey(argv: any[] | IArgvCreateKey): IKey {
         const keyPaths: Array<string | number> = [];
-        let path = argv[0];
-        let namespace = "";
-        if (argv.length > 1) {
-            namespace = argv[0];
-            path = argv[1];
+
+        let path: any[] = argv as any[];
+        let namespace: string | undefined;
+        let ancestorKey: IKey | undefined;
+        if (!Array.isArray(argv)) {
+            namespace = argv.namespace;
+            ancestorKey = argv.ancestorKey;
+            path = argv.path;
         }
 
         for (let i = 0; i < path.length; i++) {
@@ -71,7 +70,12 @@ class DatastoreOrm {
 
         // create key with namespace
         const datastore = this.getDatastore();
-        return datastore.key({namespace, path: keyPaths});
+        const key = datastore.key({namespace, path: keyPaths});
+        if (ancestorKey) {
+            key.parent = ancestorKey;
+        }
+
+        return key;
     }
 
     // endregion
@@ -150,7 +154,6 @@ class DatastoreOrm {
         return keys;
     }
 
-
     // endregion
     
     // region admin methods
@@ -228,21 +231,6 @@ class DatastoreOrm {
 
     // region private methods
 
-    private _createExcludeFromIndexes(target: object): string[] {
-        const entityColumns = datastoreOrm.getEntityColumns(target);
-        const excludeFromIndexes: string[] = [];
-        for (const [column, entityColumn] of Object.entries(entityColumns)) {
-            if (entityColumn.excludeFromIndexes.length) {
-                for (const subColumn of entityColumn.excludeFromIndexes ) {
-                    excludeFromIndexes.push(`${column}.${subColumn}`);
-                }
-            } else if (!entityColumn.index) {
-                excludeFromIndexes.push(column);
-            }
-        }
-
-        return excludeFromIndexes;
-    }
     // endregion
 }
 

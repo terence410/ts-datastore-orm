@@ -114,9 +114,10 @@ async function operationExamples() {
 async function keyExamples() {
     const key1 = datastoreOrm.createKey([User, 1]);
     const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
-    const key3 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
-    const key4 = User.create({id: 1}).getKey();
-    const key5 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
+    const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
+    const key4 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
+    const key5 = User.create({id: 1}).getKey();
+    const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
 }
 
 async function entityExamples() {
@@ -361,6 +362,3 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 # To-do
 - consolidate all error messages and type (wrap all datastore errors and handle friendly errors)
 - able to generate/deploy composite config
-- RankingHelper
-- UnqiueKeyHelper
-- find, findMany can find keys directly (to support ancestor)

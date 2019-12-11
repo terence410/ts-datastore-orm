@@ -3,11 +3,11 @@ import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
-import {parser} from "./parser";
 import {Query} from "./Query";
 import {
-    IArgvColumn,
-    IArgvId,
+    IArgvAllocateIds,
+    IArgvColumn, IArgvFind, IArgvFindMany,
+    IArgvId, IArgvTruncate,
     IArgvValue,
     IArgvValues,
     IEntityData,
@@ -28,36 +28,36 @@ export class BaseEntity {
         return new Query(this);
     }
 
-    public static async find<T extends typeof BaseEntity>(this: T, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]>;
-    public static async find<T extends typeof BaseEntity>(this: T, namespace: string, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]>;
-    public static async find<T extends typeof BaseEntity>(this: T, ...argv: any[]): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
+    public static async find<T extends typeof BaseEntity>(this: T, argv: IArgvId | IArgvFind): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
         // parse argv
-        let id = argv[0] as IArgvId;
-        let namespace = "";
-        if (argv.length > 1) {
-            namespace = argv[0];
-            id = argv[1];
+        let id: IArgvId = argv as IArgvId;
+        let namespace: string | undefined;
+        let ancestor: BaseEntity | undefined;
+        if (typeof argv === "object") {
+            namespace = argv.namespace;
+            ancestor = argv.ancestor;
+            id = argv.id;
         }
 
-        const [entities, requestResponse] = await this.findMany(namespace, [id]);
+        const [entities, requestResponse] = await this.findMany({namespace, ancestor, ids: [id]});
         return [entities.length ? entities[0] : undefined, requestResponse];
     }
 
-    public static async findMany<T extends typeof BaseEntity>(this: T, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]>;
-    public static async findMany<T extends typeof BaseEntity>(this: T, namespace: string, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]>;
-    public static async findMany<T extends typeof BaseEntity>(this: T, ...argv: any[]): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
+    public static async findMany<T extends typeof BaseEntity>(this: T, argv: IArgvId[] | IArgvFindMany): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         // parse argv
-        let ids = argv[0] as IArgvId[];
-        let namespace = "";
-        if (argv.length > 1) {
-            namespace = argv[0];
-            ids = argv[1];
+        let ids = argv as IArgvId[];
+        let namespace: string | undefined;
+        let ancestorKey: IKey | undefined;
+        if (!Array.isArray(argv)) {
+            namespace = argv.namespace;
+            ancestorKey = argv.ancestor ? argv.ancestor.getKey() : undefined;
+            ids = argv.ids;
         }
 
         // get the keys
-        const keys = ids.map(x => datastoreOrm.createKey(namespace, [this, x]));
+        const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [this, x]}));
         const datastore = datastoreOrm.getDatastore();
         const [results] = await datastore.get(keys);
 
@@ -70,34 +70,36 @@ export class BaseEntity {
         return [entities, performanceHelper.readResult()];
     }
 
-    public static async allocateIds<T extends typeof BaseEntity>(this: T, total: number): Promise<[number[], IRequestResponse]>;
-    public static async allocateIds<T extends typeof BaseEntity>(this: T, namespace: string, total: number): Promise<[number[], IRequestResponse]>;
-    public static async allocateIds<T extends typeof BaseEntity>(this: T, ...argv: any[]): Promise<[number[], IRequestResponse]> {
+    public static async allocateIds<T extends typeof BaseEntity>(this: T, argv: number | IArgvAllocateIds): Promise<[number[], IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         // parse argv
-        let total = argv[0] as number;
+        let total = argv as number;
         let namespace = "";
-        if (argv.length > 1) {
-            namespace = argv[0];
-            total = argv[1];
+        if (typeof argv === "object") {
+            total = argv.total;
+            namespace = argv.namespace;
         }
 
         const datastore = datastoreOrm.getDatastore();
-        const key = datastoreOrm.createKey(namespace, [this]);
+        const key = datastoreOrm.createKey({namespace, path: [this]});
         const [keys] =  await datastore.allocateIds(key, {allocations: total});
         const ids = keys.map(x => Number(x.id));
 
         return [ids, performanceHelper.readResult()];
     }
 
-    public static async truncate<T extends typeof BaseEntity>(this: T, namespace?: string): Promise<[number, IRequestResponse]> {
+    public static async truncate<T extends typeof BaseEntity>(this: T, argv?: IArgvTruncate): Promise<[number, IRequestResponse]> {
         const batch = 100;
         const query = this.query().selectKey().limit(batch);
+        const namespace = argv ? argv.namespace : "";
+
+        // set namespace if we have
         if (namespace) {
             query.setNamespace(namespace);
         }
 
+        // we do batch delete to optimize performance
         const batcher = new Batcher();
         const requestResponse: IRequestResponse = {executionTime: 0};
         let total = 0;
@@ -187,9 +189,9 @@ export class BaseEntity {
             if (!this.isNew || !entityColumn.generateId) {
                 throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty.`);
             }
-            key = datastoreOrm.createKey(this._namespace, [this.constructor]);
+            key = datastoreOrm.createKey({namespace: this._namespace, path: [this.constructor]});
         } else {
-            key = datastoreOrm.createKey(this._namespace, [this.constructor, this._id]);
+            key = datastoreOrm.createKey({namespace: this._namespace, path: [this.constructor, this._id]});
         }
 
         // add parent
@@ -207,7 +209,7 @@ export class BaseEntity {
             throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty.`);
         }
 
-        const key = datastoreOrm.createKey(this._namespace, [this.constructor, this._id]);
+        const key = datastoreOrm.createKey({namespace: this._namespace, path: [this.constructor, this._id]});
         if (this._ancestorKey) {
             key.parent = this._ancestorKey;
         }
@@ -369,6 +371,18 @@ export class BaseEntity {
         }
     }
 
+    private _castValue(value: any, type: any): any {
+        if (type === Date) {
+            return new Date(value);
+
+        } else if (typeof type === "function") {
+            return type(value);
+
+        }
+
+        return value;
+    }
+
     // endregion
 
     // region private methods: value get / set
@@ -384,7 +398,7 @@ export class BaseEntity {
     private _set(column: string, value: any) {
         const entityColumn = datastoreOrm.getEntityColumn(this.constructor, column);
         if (entityColumn.cast) {
-            value = parser.castValue(value, entityColumn.cast);
+            value = this._castValue(value, entityColumn.cast);
         }
 
         if (column === "id") {

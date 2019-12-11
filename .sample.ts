@@ -54,10 +54,11 @@ async function operationExamples() {
 
 async function keyExamples() {
     const key1 = datastoreOrm.createKey([User, 1]);
-    const key2 = datastoreOrm.createKey("namespace", [User, 1]);
-    const key3 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
-    const key4 = User.create({id: 1}).getKey();
-    const key5 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
+    const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
+    const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
+    const key4 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
+    const key5 = User.create({id: 1}).getKey();
+    const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
 }
 
 async function entityExamples() {

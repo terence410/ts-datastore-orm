@@ -107,6 +107,32 @@ describe("Query Test", () => {
         assert.equal(count, total - number1 - 1);
     });
 
+    it("query: order", async () => {
+        const number1 = 4;
+
+        // descending
+        const [entity1] = await QueryTest.query()
+            .order("number1", {descending: true})
+            .runOnce();
+
+        assert.isDefined(entity1);
+        if (entity1) {
+            assert.equal(entity1.number1, total - 1);
+        }
+
+        // offset
+        const offset1 = 5;
+        const [entity2] = await QueryTest.query()
+            .order("number1", {descending: false})
+            .offset(offset1)
+            .runOnce();
+
+        assert.isDefined(entity2);
+        if (entity2) {
+            assert.equal(entity2.number1, offset1);
+        }
+    });
+
     it("query: array", async () => {
         const [entity] = await QueryTest.query()
             .filterAny("array1", "=", 1)
@@ -152,32 +178,6 @@ describe("Query Test", () => {
             .filterAny("objectArray1.value", "=", 0)
             .runOnce();
         assert.isUndefined(entity2);
-    });
-
-    it("query: order", async () => {
-        const number1 = 4;
-
-        // descending
-        const [entity1] = await QueryTest.query()
-            .order("number1", {descending: true})
-            .runOnce();
-
-        assert.isDefined(entity1);
-        if (entity1) {
-            assert.equal(entity1.number1, total - 1);
-        }
-
-        // offset
-        const offset1 = 5;
-        const [entity2] = await QueryTest.query()
-            .order("number1", {descending: false})
-            .offset(offset1)
-            .runOnce();
-
-        assert.isDefined(entity2);
-        if (entity2) {
-            assert.equal(entity2.number1, offset1);
-        }
     });
 
     it("query: key only", async () => {

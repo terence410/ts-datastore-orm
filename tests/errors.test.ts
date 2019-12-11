@@ -129,6 +129,14 @@ describe("Errors Test: Operations", () => {
         }, /Please provide an id for this entity/);
     });
 
+    it("Set an invalid id", async () => {
+        await assertOperationError(async () => {
+            const entity = ErrorTest.create();
+            entity.id = new Date() as any;
+            const key = entity.getKey();
+        }, /id must be string or number./);
+    });
+
     it("Set invalid ancestor", async () => {
         await assertOperationError(async () => {
             const [entity1] = await ErrorTest.create().save();
@@ -169,6 +177,8 @@ describe("Errors Test: Operations", () => {
             entity.setNamespace("namespace");
         }, /You cannot update namespace of an existing entity. id \(.*\)/);
     });
+
+
 
     it("Ancestor has different namespace", async () => {
         await assertOperationError(async () => {

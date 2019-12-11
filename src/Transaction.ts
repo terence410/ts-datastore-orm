@@ -6,7 +6,16 @@ import {datastoreOrm} from "./datastoreOrm";
 import {errorCodes} from "./enums/errorCodes";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
-import {IArgvId, IRequestResponse, ISaveResult, ITransactionOptions, ITransactionResponse} from "./types";
+import {
+    IArgvAllocateIds,
+    IArgvFind,
+    IArgvFindMany,
+    IArgvId, IKey,
+    IRequestResponse,
+    ISaveResult,
+    ITransactionOptions,
+    ITransactionResponse
+} from "./types";
 // datastore transaction operations:
 // insert: save if not exist
 // update: save if exist
@@ -140,36 +149,36 @@ export class Transaction {
         return new Query(entityType, this);
     }
 
-    public async find<T extends typeof BaseEntity>(entityType: T, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]>;
-    public async find<T extends typeof BaseEntity>(entityType: T, namespace: string, id: IArgvId): Promise<[InstanceType<T> | undefined, IRequestResponse]>;
-    public async find<T extends typeof BaseEntity>(entityType: T, ...argv: any[]): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
+    public async find<T extends typeof BaseEntity>(entityType: T, argv: IArgvId | IArgvFind): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
         // parse argv
-        let id = argv[0] as IArgvId;
-        let namespace = "";
-        if (argv.length > 1) {
-            namespace = argv[0];
-            id = argv[1];
+        let id: IArgvId = argv as IArgvId;
+        let namespace: string | undefined;
+        let ancestor: BaseEntity | undefined;
+        if (typeof argv === "object") {
+            namespace = argv.namespace;
+            ancestor = argv.ancestor;
+            id = argv.id;
         }
 
-        const [entities, requestResponse] = await this.findMany(entityType, namespace, [id]);
+        const [entities, requestResponse] = await this.findMany(entityType, {namespace, ancestor, ids: [id]});
         return [entities.length ? entities[0] : undefined, requestResponse];
     }
 
-    public async findMany<T extends typeof BaseEntity>(entityType: T, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]>;
-    public async findMany<T extends typeof BaseEntity>(entityType: T, namespace: string, ids: IArgvId[]): Promise<[Array<InstanceType<T>>, IRequestResponse]>;
-    public async findMany<T extends typeof BaseEntity>(entityType: T, ...argv: any[]): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
+    public async findMany<T extends typeof BaseEntity>(entityType: T, argv: IArgvId[] | IArgvFindMany): Promise<[Array<InstanceType<T>>, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         // parse argv
-        let ids = argv[0] as IArgvId[];
-        let namespace = "";
-        if (argv.length > 1) {
-            namespace = argv[0];
-            ids = argv[1];
+        let ids = argv as IArgvId[];
+        let namespace: string | undefined;
+        let ancestorKey: IKey | undefined;
+        if (!Array.isArray(argv)) {
+            namespace = argv.namespace;
+            ancestorKey = argv.ancestor ? argv.ancestor.getKey() : undefined;
+            ids = argv.ids;
         }
 
         // get the keys
-        const keys = ids.map(x => datastoreOrm.createKey(namespace, [entityType, x]));
+        const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]}));
         const [results] = await this.datastoreTransaction.get(keys);
 
         // convert into entities
@@ -217,21 +226,19 @@ export class Transaction {
         this.deletedEntities = this.deletedEntities.concat(entities);
     }
 
-    public async allocateIds<T extends typeof BaseEntity>(entityType: T, total: number): Promise<[number[], IRequestResponse]>;
-    public async allocateIds<T extends typeof BaseEntity>(entityType: T, namespace: string, total: number): Promise<[number[], IRequestResponse]>;
-    public async allocateIds<T extends typeof BaseEntity>(entityType: T, ...argv: any[]): Promise<[number[], IRequestResponse]> {
+    public async allocateIds<T extends typeof BaseEntity>(entityType: T, argv: number | IArgvAllocateIds): Promise<[number[], IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         // parse argv
-        let total = argv[0] as number;
+        let total = argv as number;
         let namespace = "";
-        if (argv.length > 1) {
-            namespace = argv[0];
-            total = argv[1];
+        if (typeof argv === "object") {
+            total = argv.total;
+            namespace = argv.namespace;
         }
 
         const datastore = datastoreOrm.getDatastore();
-        const key = datastoreOrm.createKey(namespace, [entityType]);
+        const key = datastoreOrm.createKey({namespace, path: [entityType]});
         const [keys] =  await this.datastoreTransaction.allocateIds(key, {allocations: total});
         const ids = keys.map(x => Number(x.id));
 

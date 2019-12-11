@@ -24,9 +24,9 @@ const newNamespace = "testing1";
 describe("Default Test", () => {
     it("truncate", async () => {
         await Namespace.truncate();
-        await Namespace.truncate(newNamespace);
+        await Namespace.truncate({namespace: newNamespace});
         await NamespaceChild.truncate();
-        await NamespaceChild.truncate(newNamespace);
+        await NamespaceChild.truncate({namespace: newNamespace});
     });
 
     it("create entity", async () => {
@@ -67,7 +67,7 @@ describe("Default Test", () => {
         const [foundEntity3] = await Namespace.find(entity.id);
         assert.isUndefined(foundEntity3);
 
-        const [foundEntity4] = await Namespace.find(newNamespace, entity.id);
+        const [foundEntity4] = await Namespace.find({namespace: newNamespace, id: entity.id});
         assert.isDefined(foundEntity4);
     });
 
@@ -80,11 +80,11 @@ describe("Default Test", () => {
             .save();
 
         const [ids, transactionResponse] = await Transaction.execute(async transaction => {
-            const [users, requestResponse1] = await transaction.findMany(Namespace, newNamespace, [id]);
+            const [users, requestResponse1] = await transaction.findMany(Namespace, {namespace: newNamespace, ids: [id]});
 
             if (users.length) {
                 const user1 = users[0];
-                const [ids1] = await transaction.allocateIds(Namespace, newNamespace, totalAllocate);
+                const [ids1] = await transaction.allocateIds(Namespace, {namespace: newNamespace, total: totalAllocate});
                 transaction.save(user1);
                 return ids1;
             } else {

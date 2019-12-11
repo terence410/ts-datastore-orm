@@ -14,7 +14,6 @@ export type IConfig = {
 
 // region datastore related structure
 
-export type IKeyType = number | string;
 export type IKey = DatastoreEntity.entity.Key;
 export type IOperator = DatastoreQuery.Operator;
 export type IOrderOptions = DatastoreQuery.OrderOptions;
@@ -98,8 +97,8 @@ export interface IQueryStreamEvent<T> {
 // endregion
 
 // region arguments
-export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]: T[P]};
 export type IArgvId = string | number;
+export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]: T[P]};
 export type IArgvColumn<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntity>;
 export type IArgvValue<T extends BaseEntity, K extends keyof IArgvValues<T>> = IArgvValues<T>[K];
 export type ITransactionOptions = {
@@ -107,6 +106,28 @@ export type ITransactionOptions = {
     readOnly: boolean;
     maxRetry: number;
     delay: number;
+};
+export type IArgvCreateKey = {
+    namespace?: string,
+    ancestorKey?: IKey;
+    path: any[];
+};
+export type IArgvFind = {
+    namespace?: string,
+    ancestor?: BaseEntity;
+    id: IArgvId;
+};
+export type IArgvFindMany = {
+    namespace?: string,
+    ancestor?: BaseEntity;
+    ids: IArgvId[];
+};
+export type IArgvAllocateIds = {
+    total: number;
+    namespace: string,
+};
+export type IArgvTruncate = {
+    namespace: string,
 };
 // endregion
 
