@@ -90,7 +90,7 @@ export class BaseEntity {
     }
 
     public static async truncate<T extends typeof BaseEntity>(this: T, argv?: IArgvTruncate): Promise<[number, IRequestResponse]> {
-        const batch = 100;
+        const batch = 500;
         const query = this.query().selectKey().limit(batch);
         const namespace = argv ? argv.namespace : "";
 
@@ -312,13 +312,14 @@ export class BaseEntity {
         return [this, performanceHelper.readResult()];
     }
 
+    // deleting an not existing key wont' throw error
     public async delete(): Promise<[this, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         const datastore = datastoreOrm.getDatastore();
         const key = this.getKey();
         try {
-            await datastore.delete(key);
+            const [result] = await datastore.delete(key);
         } catch (err) {
             throw err;
         }
@@ -403,7 +404,7 @@ export class BaseEntity {
 
         if (column === "id") {
             // if we already have id and this is now a new entity, block for updating
-            if (this._id && !this._isNew) {
+            if (this._id && this._id !== value && !this._isNew) {
                 throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot update id of an existing entity. id (${(this as any).id}).`);
             }
 

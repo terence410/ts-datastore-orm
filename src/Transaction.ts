@@ -44,6 +44,7 @@ export class Transaction {
         };
         const performanceHelper = new PerformanceHelper().start();
         const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        // options
         const delay = options.delay || defaultOptions.delay;
         const quickRollback = options.quickRollback !== undefined ? options.quickRollback : defaultOptions.quickRollback;
         const maxRetry = Math.max(0, options.maxRetry || defaultOptions.maxRetry);

@@ -9,8 +9,9 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
 # Feature
 - Covering all features of datastore: query, transaction, ancestor, index, allocateIds, namespace, etc..
 - Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
-- Support default values. This will be useful if you decided to add extra columns to an entity.
+- Support default values and variable casting. This will be useful if you decided to add/modify columns to an entity.
 - Provide execution time for every request. It only take up around 0.3s for 1 million measurements. 
+- Switching the namespace of entity easily.
 - LockHelper: Simple but robust distributed lock for atomic updates. Useful for small to medium server without worry of scaling.
 
 # Project Setup
@@ -23,18 +24,18 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
 
 # Environment Variable
 - export NODE_ENV=production
-  - it will try to load the config file "./datastoreom.production.json"
+  - it will try to load the config file "./datastoreorm.production.json" first
+  - if the file is not found, it will load the config file "./datastoreorm.default.json"
 - export DATASTOREORM_CONFIG_PATH=./path/custom.json
   - it will try to load the config file "./path/custom.json"
-  - this has a higher priority than NODE_ENV
   
 # Config file format (./datastoreorm.default.json)
 
 ```json5
 {
   "keyFilename": "datastoreServiceAccount.json",
-  "friendlyError": true, // for easier debugging of promise
-  "namespaec": "namespace" // default namespace for the entity
+  "friendlyError": true, // for easier debugging of some promise error, enable this if you found some error log hard to trace
+  "namespaec": "namespace" // default namespace for all the entities
 }
 ```
 
@@ -362,3 +363,5 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 # To-do
 - consolidate all error messages and type (wrap all datastore errors and handle friendly errors)
 - able to generate/deploy composite config
+- performance test
+- all output use the form [result, response] no matter have results or not

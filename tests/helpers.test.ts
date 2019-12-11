@@ -133,6 +133,5 @@ describe("Helper Test: Entity", () => {
         // all values are the same
         const value1 = results[0][0].value;
         assert.isTrue(results.every(x => x[0].value === value1));
-
     });
 });

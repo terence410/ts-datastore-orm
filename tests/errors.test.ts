@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {DatastoreOrmDecoratorError, DatastoreOrmOperationError} from "../src";
+import {Batcher, DatastoreOrmDecoratorError, DatastoreOrmOperationError} from "../src";
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
@@ -113,6 +113,13 @@ describe("Errors Test: Operations", () => {
         const [total, requestResponse] = await ErrorTest.truncate();
     });
 
+    it("Delete multiple times (valid)", async () => {
+        const batcher = new Batcher();
+        const [entity1] = await ErrorTest.create().save();
+        await entity1.delete();
+        await entity1.delete();
+    });
+
     it("Save without id", async () => {
         await assertOperationError(async () => {
             const [entity1] = await ErrorTest.create().save();
@@ -165,9 +172,12 @@ describe("Errors Test: Operations", () => {
     });
 
     it("Update id after save", async () => {
+        const [entity1] = await ErrorTest.create().save();
+        entity1.id = entity1.id; // this is ok
+
         await assertOperationError(async () => {
-            const [entity] = await ErrorTest.create().save();
-            entity.id = 1;
+            const [entity2] = await ErrorTest.create().save();
+            entity2.id = 1;
         }, /You cannot update id of an existing entity. id \(.*\)/);
     });
 
@@ -177,8 +187,6 @@ describe("Errors Test: Operations", () => {
             entity.setNamespace("namespace");
         }, /You cannot update namespace of an existing entity. id \(.*\)/);
     });
-
-
 
     it("Ancestor has different namespace", async () => {
         await assertOperationError(async () => {

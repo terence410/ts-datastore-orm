@@ -1,4 +1,4 @@
-import {BaseEntity, Column, Entity, Transaction} from "..";
+import {BaseEntity, Column, datastoreOrm, Entity, Transaction} from "..";
 import {DatastoreOrmLockError} from "../errors/DatastoreOrmLockError";
 import {ILockOptions, ILockResponse, IRequestResponse} from "../types";
 import {createMd5, generateRandomString, timeout} from "../utils";
@@ -32,16 +32,19 @@ export class LockHelper {
 
     public static async execute<T extends any>(key: string, callback: (lockHelper: LockHelper) => Promise<T>,
                                                options: Partial<ILockOptions> = {}):
-        Promise<[T, IRequestResponse]> {
+        Promise<[T, ILockResponse]> {
 
         const performanceHelper = new PerformanceHelper().start();
         const lockHelper = new LockHelper(key, options);
-        const [canLock] = await lockHelper.acquire();
+        const [isNewLock, lockResponse] = await lockHelper.acquire();
 
         let result: any;
-        if (canLock) {
+        try {
             result = await callback(lockHelper);
+        } catch (err) {
+            throw err;
 
+        } finally {
             // release the lock
             if (lockHelper.canRelease) {
                 if (lockHelper.options.quickRelease) {
@@ -52,23 +55,23 @@ export class LockHelper {
             }
         }
 
-        return [result, performanceHelper.readResult()];
+        return [result, {totalRetry: lockResponse.totalRetry,  executionTime: performanceHelper.read()}];
     }
 
     public canRelease: boolean = false;
-    public options: ILockOptions;
-    private _id: string;
-    private _clientId: string;
+    public readonly options: ILockOptions;
+    private readonly _id: string;
+    private readonly _clientId: string;
 
     constructor(public readonly key: string, options: Partial<ILockOptions> = {}) {
         this._clientId = generateRandomString(16);
         this._id = createMd5(key);
-        this.options = Object.assign(defaultOptions, options);
+        this.options = Object.assign({}, defaultOptions, options);
     }
 
     public async acquire(): Promise<[boolean, ILockResponse]> {
         if (this.canRelease) {
-            throw new DatastoreOrmLockError(`(LockHelper) You can not acquire a lock repeatedly. key (${this.key}).`);
+            throw new DatastoreOrmLockError(`(LockHelper) You cannot acquire the lock repeatedly. key (${this.key})`);
         }
 
         const performanceHelper = new PerformanceHelper().start();
@@ -108,9 +111,8 @@ export class LockHelper {
                     isNewLock = isNewLock1 as boolean;
                     break;
                 }
-
             } catch (err) {
-                // we ignore transaction error
+                // we ignore all error
             }
 
             if (!canLock) {
@@ -119,7 +121,7 @@ export class LockHelper {
         } while (retry++ < this.options.maxRetry);
 
         if (!canLock) {
-            throw new Error(`(LockHelper) Failed to acquire lock for the key: ${this.key}.`);
+            throw new DatastoreOrmLockError(`(LockHelper) Failed to acquire the lock. key (${this.key}). retry: ${retry - 1}.`);
         }
 
         this.canRelease = canLock;
@@ -129,7 +131,7 @@ export class LockHelper {
 
     public async release(): Promise<[boolean, IRequestResponse]> {
         if (!this.canRelease) {
-            throw new Error(`(LockHelper) You can not release lock without successfully being acquired. key: ${this.key}`);
+            throw new DatastoreOrmLockError(`(LockHelper) You cannot release a lock without successfully being acquired. key (${this.key})`);
         }
 
         this.canRelease = false;
