@@ -24,11 +24,11 @@ import {
 // above should not use await (it probably will be done by batch by transaction)
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-let defaultOptions: ITransactionOptions = {delay: 50, maxRetry: 0, quickRollback: true, readOnly: false};
+const defaultOptions: ITransactionOptions = {delay: 50, maxRetry: 0, quickRollback: true, readOnly: false};
 
 export class Transaction {
     public static setDefaultLockOptions(lockOptions: Partial<ITransactionOptions> = {}) {
-        defaultOptions = Object.assign(defaultOptions, lockOptions);
+        Object.assign(defaultOptions, lockOptions);
     }
     
     public static async execute<T extends any>(callback: (transaction: Transaction) => Promise<T>,

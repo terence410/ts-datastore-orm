@@ -4,7 +4,7 @@ import {ILockOptions, ILockResponse, IRequestResponse} from "../types";
 import {createMd5, generateRandomString, timeout} from "../utils";
 import {PerformanceHelper} from "./PerformanceHelper";
 
-let defaultOptions: ILockOptions = {expire: 5000, delay: 50, maxRetry: 0, quickRelease: true, throwReleaseError: false};
+const defaultOptions: ILockOptions = {expire: 5000, delay: 50, maxRetry: 0, quickRelease: true, throwReleaseError: false};
 
 @Entity({namespace: "datastoreorm", kind: "lock"})
 export class Lock extends BaseEntity {
@@ -23,7 +23,7 @@ export class Lock extends BaseEntity {
 
 export class LockHelper {
     public static setDefaultOptions(lockOptions: Partial<ILockOptions> = {}) {
-        defaultOptions = Object.assign(defaultOptions, lockOptions);
+        Object.assign(defaultOptions, lockOptions);
     }
 
     public static async truncate() {

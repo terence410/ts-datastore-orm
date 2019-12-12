@@ -65,7 +65,7 @@ export interface IEntityColumnBase {
     generateId: boolean;
     index: boolean;
     excludeFromIndexes: string[];
-    cast: ((value: string) => any) | null;
+    cast: ((newValue: any, oldValue: any) => any) | null;
 }
 export interface IEntityColumn extends IEntityColumnBase {
     type: any;

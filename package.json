@@ -1,6 +1,6 @@
 {
   "name": "ts-datastore-orm",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A full functional Datastore Orm library written in Typescript.",
   "main": "build/index.js",
   "types": "build/index.d.ts",

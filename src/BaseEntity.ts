@@ -106,7 +106,7 @@ export class BaseEntity {
 
         while (query.hasNextPage()) {
             const [entities, requestResponse1] = await query.run();
-            const [batchResponse] = await batcher.deleteMany(entities);
+            const [_, batchResponse] = await batcher.deleteMany(entities);
             total += entities.length;
             requestResponse.executionTime += requestResponse1.executionTime;
             requestResponse.executionTime += batchResponse.executionTime;
@@ -372,16 +372,16 @@ export class BaseEntity {
         }
     }
 
-    private _castValue(value: any, type: any): any {
+    private _castValue(type: any, newValue: any, oldValue: any): any {
         if (type === Date) {
-            return new Date(value);
+            return new Date(newValue);
 
         } else if (typeof type === "function") {
-            return type(value);
+            return type(newValue, oldValue);
 
         }
 
-        return value;
+        return newValue;
     }
 
     // endregion
@@ -398,8 +398,10 @@ export class BaseEntity {
 
     private _set(column: string, value: any) {
         const entityColumn = datastoreOrm.getEntityColumn(this.constructor, column);
-        if (entityColumn.cast) {
-            value = this._castValue(value, entityColumn.cast);
+
+        // we only have cast for non id since modifing id has some potential impact
+        if (column !== "id" && entityColumn.cast) {
+            value = this._castValue( entityColumn.cast, value, this._data[column]);
         }
 
         if (column === "id") {

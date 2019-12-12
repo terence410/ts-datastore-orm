@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {BaseEntity, Column, Entity} from "../src";
+import {BaseEntity, casts, Column, Entity} from "../src";
 
 function customCast(value: any) {
     if (Array.isArray(value) || value === 10) {
@@ -8,6 +8,17 @@ function customCast(value: any) {
         return -10;
     }
 }
+
+type IUnionObject = {
+    name: string;
+    age: number;
+    skin?: string;
+    home: {
+        country: string,
+        district: string,
+        streetNo?: number,
+    },
+};
 
 @Entity({kind: "cast"})
 export class Cast extends BaseEntity {
@@ -25,6 +36,12 @@ export class Cast extends BaseEntity {
 
     @Column({cast: Date})
     public date: Date = new Date();
+
+    @Column({cast: casts.mergeObject})
+    public mergeObject: IUnionObject = {name: "Terence", age: 10, home: {country: "hk", district: "island"}};
+
+    @Column({cast: casts.mergeObjectStrict})
+    public mergeObjectStrict: IUnionObject = {name: "Terence", age: 10, home: {country: "hk", district: "island"}};
 
     @Column({cast: customCast})
     public custom1: any = "";
@@ -50,6 +67,8 @@ const values = {
     boolean: 10,
     custom1: [1, 3, 3],
     custom2: {value: 10},
+    mergeObject: {},
+    mergeObjectStrict: {},
 };
 
 describe("Cast Test", () => {
@@ -82,4 +101,25 @@ describe("Cast Test", () => {
         }
     });
 
+    it("merge object", async () => {
+        const mergeObject = {name: "Anonymous", skin: "yellow", home: {country: "uk", streetNo: 10}};
+        const entity1 = Cast.create();
+        (entity1 as any)._data.mergeObject = mergeObject;
+        (entity1 as any)._data.mergeObjectStrict = mergeObject;
+        await entity1.save();
+
+        const [foundEntity] = await Cast.find(entity1.id);
+        assert.isDefined(foundEntity);
+        if (foundEntity) {
+            // value is overrided
+            assert.equal(foundEntity.mergeObject.name, mergeObject.name);
+            assert.equal(foundEntity.mergeObject.skin, mergeObject.skin);
+            assert.equal(foundEntity.mergeObject.home.streetNo, mergeObject.home.streetNo);
+
+            // won't have the value in strict
+            assert.equal(foundEntity.mergeObjectStrict.name, mergeObject.name);
+            assert.isUndefined(foundEntity.mergeObjectStrict.skin);
+            assert.isUndefined(foundEntity.mergeObjectStrict.home.streetNo);
+        }
+    });
 });

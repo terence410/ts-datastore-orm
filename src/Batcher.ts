@@ -9,7 +9,7 @@ export class Batcher {
         //
     }
 
-    public async saveMany<T extends BaseEntity>(entities: T[]): Promise<[IRequestResponse]> {
+    public async saveMany<T extends BaseEntity>(entities: T[]): Promise<[number, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         const datastore = datastoreOrm.getDatastore();
@@ -46,16 +46,16 @@ export class Batcher {
             const [updateResult] = await datastore.update(updateSaveDataList);
         }
 
-        return [performanceHelper.readResult()];
+        return [entities.length, performanceHelper.readResult()];
     }
 
-    public async deleteMany<T extends BaseEntity>(entities: T[]): Promise<[IRequestResponse]> {
+    public async deleteMany<T extends BaseEntity>(entities: T[]): Promise<[number, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         // mass delete
         const datastore = datastoreOrm.getDatastore();
         await datastore.delete(entities.map(x => x.getKey()));
 
-        return [performanceHelper.readResult()];
+        return [entities.length, performanceHelper.readResult()];
     }
 }

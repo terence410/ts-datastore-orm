@@ -24,4 +24,10 @@ export class User extends BaseEntity {
 
     @Column()
     public object: any = {};
+
+    @Column()
+    public undefined: undefined = undefined;
+
+    @Column()
+    public null: null = null;
 }

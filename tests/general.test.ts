@@ -50,6 +50,8 @@ describe("General Test", () => {
             string: "abc",
             buffer: Buffer.alloc(10),
             object: {name: "Terence"},
+            undefined,
+            null: null,
         };
         const user = User.create(values);
         await user.save();

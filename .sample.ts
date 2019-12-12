@@ -33,6 +33,12 @@ export class User extends BaseEntity {
 
     @Column({index: true, excludeFromIndexes: ["object.name"]})
     public object: any = {};
+
+    @Column()
+    public undefined: undefined = undefined;
+
+    @Column()
+    public null: null = null;
 }
 
 @Entity({namespace: "testing", kind: "taskGroup", ancestors: User})

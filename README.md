@@ -93,6 +93,12 @@ export class User extends BaseEntity {
 
     @Column({excludeFromIndexes: ["object.name"]})
     public object: any = {};
+    
+    @Column()
+    public undefined: undefined = undefined;
+
+    @Column()
+    public null: null = null;
 }
 
 @Entity({namespace: "testing", kind: "taskGroup", ancestors: User})
@@ -349,6 +355,7 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 | Cast | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/cast.test.ts) |
 | Namespace | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/namespace.test.ts) |
 | Subclass | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/subclass.test.ts) |
+| Cast | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/cast.test.ts) |
 | Errors | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/errors.test.ts) |
 | Admin | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/admin.test.ts) |
 | Helpers | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers.test.ts) |
@@ -364,4 +371,3 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - consolidate all error messages and type (wrap all datastore errors and handle friendly errors)
 - able to generate/deploy composite config
 - performance test
-- all output use the form [result, response] no matter have results or not
