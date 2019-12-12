@@ -361,6 +361,11 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 | Helpers | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers.test.ts) |
 | LockHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/lockHelper.test.ts) |
 
+# Performance Remarks
+- Around 30ms to update 1 entity
+- Around 30ms to update 10 batched entities
+- Around 500ms to update 100 batched entities
+
 # Useful links
 - https://googleapis.dev/nodejs/datastore/5.0.0/index.html
 - https://cloud.google.com/datastore/docs/
@@ -370,4 +375,3 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 # To-do
 - consolidate all error messages and type (wrap all datastore errors and handle friendly errors)
 - able to generate/deploy composite config
-- performance test

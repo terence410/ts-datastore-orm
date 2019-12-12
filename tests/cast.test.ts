@@ -1,8 +1,8 @@
 import { assert, expect } from "chai";
 import {BaseEntity, casts, Column, Entity} from "../src";
 
-function customCast(value: any) {
-    if (Array.isArray(value) || value === 10) {
+function customCast(newValue: any, oldValue: any) {
+    if (Array.isArray(newValue) || newValue === 10) {
         return 10;
     } else {
         return -10;

@@ -12,3 +12,7 @@ export function generateRandomString(length: number) {
     const value = crypto.randomBytes(length / 2 | 0).toString("hex");
     return value.substr(0, length);
 }
+
+export function getUsedMemory() {
+    return (process.memoryUsage().heapUsed / 1024 / 1024) | 0;
+}

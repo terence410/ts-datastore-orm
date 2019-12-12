@@ -14,8 +14,8 @@ class DatastoreOrm {
     private _dataStore: Datastore.Datastore;
 
     constructor() {
-        const configFile = configLoader.getConfig();
-        this._dataStore = new Datastore.Datastore({keyFilename: configFile.keyFilename});
+        const config = configLoader.getConfig();
+        this._dataStore = new Datastore.Datastore({keyFilename: config.keyFilename});
     }
 
     // region public methods
