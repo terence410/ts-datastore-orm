@@ -1,3 +1,4 @@
+import {DatastoreOrmOperationError} from "..";
 import {BaseEntity} from "../BaseEntity";
 import {Transaction} from "../Transaction";
 import {IArgvColumn, ITransactionOptions, ITransactionResponse} from "../types";
@@ -30,7 +31,8 @@ export class IncrementHelper<R extends typeof BaseEntity, T extends InstanceType
             (this.entity as any)[column] = resultValue as number;
             return [resultValue as number, transactionResponse];
         } else {
-            throw new Error("Entity not exist");
+            throw new DatastoreOrmOperationError(`(IncrementHelper, ${this.entity.constructor.name}) We could increment the value on column ${column}.`);
+
         }
     }
 }

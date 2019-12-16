@@ -1,6 +1,6 @@
 {
   "name": "ts-datastore-orm",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A full functional Datastore Orm library written in Typescript.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -17,6 +17,7 @@
     "test-lockHelper": "mocha --exit --timeout 20000 -r ts-node/register tests/helpers/lockHelper.test.ts",
     "test-transaction": "mocha --exit --timeout 20000 -r ts-node/register tests/transaction.test.ts",
     "test-subclass": "mocha --exit --timeout 20000 -r ts-node/register tests/subclass.test.ts",
+    "test-events": "mocha --exit --timeout 20000 -r ts-node/register tests/events.test.ts",
     "test-cast": "mocha --exit --timeout 20000 -r ts-node/register tests/cast.test.ts",
     "test-errors": "mocha --exit --timeout 20000 -r ts-node/register tests/errors.test.ts",
     "test-admin": "mocha --exit --timeout 20000 -r ts-node/register tests/admin.test.ts",

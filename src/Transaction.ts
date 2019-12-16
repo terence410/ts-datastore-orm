@@ -4,6 +4,8 @@ import * as DataStore from "@google-cloud/datastore";
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
 import {errorCodes} from "./enums/errorCodes";
+import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
 import {
@@ -12,9 +14,8 @@ import {
     IArgvFindMany,
     IArgvId, IKey,
     IRequestResponse,
-    ISaveResult,
     ITransactionOptions,
-    ITransactionResponse
+    ITransactionResponse,
 } from "./types";
 // datastore transaction operations:
 // insert: save if not exist
@@ -33,6 +34,8 @@ export class Transaction {
     
     public static async execute<T extends any>(callback: (transaction: Transaction) => Promise<T>,
                                                options: Partial<ITransactionOptions> = {}): Promise<[T, ITransactionResponse]> {
+        const performanceHelper = new PerformanceHelper().start();
+
         // return result
         let result: any;
         const transactionResponse: ITransactionResponse = {
@@ -42,16 +45,16 @@ export class Transaction {
             savedEntities: [],
             deletedEntities: [],
         };
-        const performanceHelper = new PerformanceHelper().start();
-        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+
         // options
         const delay = options.delay || defaultOptions.delay;
         const quickRollback = options.quickRollback !== undefined ? options.quickRollback : defaultOptions.quickRollback;
         const maxRetry = Math.max(0, options.maxRetry || defaultOptions.maxRetry);
 
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
         let retry = 0;
         do {
-
             // start transaction
             const transaction = new Transaction(options);
             try {
@@ -83,7 +86,7 @@ export class Transaction {
                 }
                 
                 // retry transaction only if aborted
-                if ((err as any).code === errorCodes.ABORTED) {
+                if (err.code === errorCodes.ABORTED) {
                     if (retry < maxRetry) {
                         transactionResponse.totalRetry = retry;
 
@@ -109,8 +112,9 @@ export class Transaction {
     public datastoreTransaction: DataStore.Transaction;
 
     // entities pending for save
-    public savedEntities: BaseEntity[];
-    public deletedEntities: BaseEntity[];
+    public savedEntities: BaseEntity[] = [];
+    public savedKeys: IKey[] = [];
+    public deletedEntities: BaseEntity[] = [];
 
     // internal handling for rollback
     public skipCommit: boolean = false;
@@ -118,31 +122,79 @@ export class Transaction {
     constructor(options: Partial<ITransactionOptions> = {}) {
         const datastore = datastoreOrm.getDatastore();
         this.datastoreTransaction = datastore.transaction({readOnly: options.readOnly});
-        this.savedEntities = [];
-        this.deletedEntities = [];
     }
 
     // region public methods
 
     // start transaction
-    public run() {
-        return this.datastoreTransaction.run();
+    public async run() {
+        // rest the data (in case the transaction is reused)
+        this.savedEntities = [];
+        this.savedKeys = [];
+        this.deletedEntities = [];
+        this.skipCommit = false;
+
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            await this.datastoreTransaction.run();
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`Transaction Run Error. Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
+        }
     }
 
     public async commit(): Promise<[IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
-        const [result] = await this.datastoreTransaction.commit();
-        this._processCommitResult(result as ISaveResult);
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            const [result] = await this.datastoreTransaction.commit();
+            this._processSavedKeys();
+            this._processEvents();
+            return [performanceHelper.readResult()];
 
-        return [performanceHelper.readResult()];
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`Transaction Commit Error. Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
+        }
     }
 
     public async rollback() {
-        // clear it
+        // reset data
         this.savedEntities = [];
+        this.savedKeys = [];
+        this.deletedEntities = [];
         this.skipCommit = true;
-        return this.datastoreTransaction.rollback();
+
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            await this.datastoreTransaction.rollback();
+
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`Transaction Rollback Error. Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
+        }
     }
 
     public query<T extends typeof BaseEntity>(entityType: T) {
@@ -180,15 +232,30 @@ export class Transaction {
 
         // get the keys
         const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]}));
-        const [results] = await this.datastoreTransaction.get(keys);
 
-        // convert into entities
-        let entities: any[] = [];
-        if (Array.isArray(results)) {
-            entities = results.map(x => entityType.newFromEntityData(x));
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            const [results] = await this.datastoreTransaction.get(keys);
+
+            // convert into entities
+            let entities: any[] = [];
+            if (Array.isArray(results)) {
+                entities = results.map(x => entityType.newFromEntityData(x));
+            }
+
+            return [entities, performanceHelper.readResult()];
+
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`(${entityType.name}) Transaction Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
         }
-
-        return [entities, performanceHelper.readResult()];
     }
 
     public save<T extends BaseEntity>(entity: T) {
@@ -204,11 +271,14 @@ export class Transaction {
             const insertSaveDataList = insertEntities.map(x => x.getSaveData());
             insertEntities.forEach(x => x.isNew = false);
             this.datastoreTransaction.insert(insertSaveDataList);
+            this.savedKeys = this.savedKeys.concat(insertSaveDataList.map(x => x.key));
         }
 
         if (updateEntities.length) {
+            updateEntities.forEach(x => x.isNew = false);
             const updateSaveDataList = updateEntities.map(x => x.getSaveData());
             this.datastoreTransaction.update(updateSaveDataList);
+            this.savedKeys = this.savedKeys.concat(updateSaveDataList.map(x => x.key));
         }
 
         // append to saved entities
@@ -240,29 +310,45 @@ export class Transaction {
 
         const datastore = datastoreOrm.getDatastore();
         const key = datastoreOrm.createKey({namespace, path: [entityType]});
-        const [keys] =  await this.datastoreTransaction.allocateIds(key, {allocations: total});
-        const ids = keys.map(x => Number(x.id));
 
-        return [ids, performanceHelper.readResult()];
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            const [keys] = await this.datastoreTransaction.allocateIds(key, {allocations: total});
+            const ids = keys.map(x => Number(x.id));
+
+            return [ids, performanceHelper.readResult()];
+
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`(${entityType.name}) Transaction Allocate Ids Error. Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
+        }
     }
 
     // endregion
 
     // region private methods
 
-    private _processCommitResult(saveResult: ISaveResult) {
-        if (this.savedEntities.length) {
-            const newKeys = datastoreOrm.extractMutationKeys(saveResult);
-
-            // update the key
-            for (let i = 0; i < newKeys.length; i++) {
-                const entity = this.savedEntities[i];
-                const newKey = newKeys[i];
-                if (!(entity as any)._id) {
-                    (entity as any)._set("id", Number(newKey.id));
-                }
+    private _processSavedKeys() {
+        for (let i = 0; i < this.savedKeys.length; i++) {
+            const entity = this.savedEntities[i];
+            const newKey = this.savedKeys[i];
+            if (!(entity as any)._id) {
+                (entity as any)._set("id", Number(newKey.id));
             }
         }
+    }
+
+    private _processEvents() {
+        // emit events
+        this.savedEntities.forEach(x => eventEmitters.emit("save", x));
+        this.deletedEntities.forEach(x => eventEmitters.emit("delete", x));
     }
 
     // endregion

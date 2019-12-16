@@ -114,7 +114,7 @@ describe("Helper Test: Relationship", () => {
 });
 
 describe("Helper Test: Entity", () => {
-    it("findOrCrate", async () => {
+    it("findOrCreate", async () => {
         const id = 1001;
         const [ancestor] = await Helper.create().save();
 

@@ -1,7 +1,9 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
+import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
+import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
 import {
@@ -10,10 +12,9 @@ import {
     IArgvId, IArgvTruncate,
     IArgvValue,
     IArgvValues,
-    IEntityData,
+    IEntityData, IEvents,
     IKey,
     IRequestResponse,
-    ISaveResult,
 } from "./types";
 
 export class BaseEntity {
@@ -26,6 +27,10 @@ export class BaseEntity {
 
     public static query<T extends typeof BaseEntity>(this: T): Query<T> {
         return new Query(this);
+    }
+
+    public static getEvents<T extends typeof BaseEntity>(this: T): IEvents<InstanceType<T>> {
+        return eventEmitters.getEventEmitter(this, true);
     }
 
     public static async find<T extends typeof BaseEntity>(this: T, argv: IArgvId | IArgvFind): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
@@ -59,15 +64,30 @@ export class BaseEntity {
         // get the keys
         const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [this, x]}));
         const datastore = datastoreOrm.getDatastore();
-        const [results] = await datastore.get(keys);
 
-        // convert into entities
-        let entities: any[] = [];
-        if (Array.isArray(results)) {
-            entities = results.map(x => this.newFromEntityData(x));
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            const [results] = await datastore.get(keys);
+
+            // convert into entities
+            let entities: any[] = [];
+            if (Array.isArray(results)) {
+                entities = results.map(x => this.newFromEntityData(x));
+            }
+
+            return [entities, performanceHelper.readResult()];
+
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`(${this.name}) Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
         }
-
-        return [entities, performanceHelper.readResult()];
     }
 
     public static async allocateIds<T extends typeof BaseEntity>(this: T, argv: number | IArgvAllocateIds): Promise<[number[], IRequestResponse]> {
@@ -83,10 +103,24 @@ export class BaseEntity {
 
         const datastore = datastoreOrm.getDatastore();
         const key = datastoreOrm.createKey({namespace, path: [this]});
-        const [keys] =  await datastore.allocateIds(key, {allocations: total});
-        const ids = keys.map(x => Number(x.id));
 
-        return [ids, performanceHelper.readResult()];
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            const [keys] = await datastore.allocateIds(key, {allocations: total});
+            const ids = keys.map(x => Number(x.id));
+            return [ids, performanceHelper.readResult()];
+
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`(${this.name}) Allocate Ids Error. Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
+        }
     }
 
     public static async truncate<T extends typeof BaseEntity>(this: T, argv?: IArgvTruncate): Promise<[number, IRequestResponse]> {
@@ -126,6 +160,7 @@ export class BaseEntity {
         }
         entity.setNamespace(key.namespace || "");
         entity._isNew = false;
+        entity._isRecentlyCreated = false;
         entity._rawData = data;
         entity._isReadOnly = isReadOnly;
         return entity;
@@ -134,6 +169,7 @@ export class BaseEntity {
     // endregion
 
     private _isNew = true;
+    private _isRecentlyCreated = true;
     private _isReadOnly = false;
     private _ancestorKey: IKey | undefined;
     private _id: number | string = "";
@@ -155,7 +191,12 @@ export class BaseEntity {
 
     /** @internal */
     public set isNew(value) {
+        this._isRecentlyCreated = this._isNew; // update recently created based on isNew Value
         this._isNew = value;
+    }
+
+    public get isRecentlyCreated(): boolean {
+        return this._isRecentlyCreated;
     }
 
     public get isReadOnly(): boolean {
@@ -282,32 +323,41 @@ export class BaseEntity {
         }
 
         // save
-        try {
-            const datastore = datastoreOrm.getDatastore();
-            const saveData = this.getSaveData();
+        const datastore = datastoreOrm.getDatastore();
+        const saveData = this.getSaveData();
 
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+
+        try {
             // update isNew = false no matter what
             if (this.isNew) {
                 this.isNew = false;
-
                 const [insertResult] = await datastore.insert(saveData);
 
                 // if we do not have id, this is an auto generated id, we will try to get it
-                if (!this._id) {
-                    const newKeys = datastoreOrm.extractMutationKeys(insertResult as ISaveResult);
-                    if (newKeys.length) {
-                        const newKey = newKeys[0];
-                        this._set("id", Number(newKey.id));
-                    }
+                if (!this._id && saveData.key.id) {
+                    this._set("id", Number(saveData.key.id));
                 }
 
             } else {
+                this.isNew = false;
                 const [updateResult] = await datastore.update(saveData);
 
             }
         } catch (err) {
-            throw err;
+            const error = new DatastoreOrmDatastoreError(`(${this.constructor.name}) Entity cannot be saved. id (${(this as any).id}). Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
         }
+
+        // emit event
+        eventEmitters.emit("save", this);
 
         return [this, performanceHelper.readResult()];
     }
@@ -318,10 +368,24 @@ export class BaseEntity {
 
         const datastore = datastoreOrm.getDatastore();
         const key = this.getKey();
+
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
         try {
             const [result] = await datastore.delete(key);
+
+            // emit event
+            eventEmitters.emit("delete", this);
+
         } catch (err) {
-            throw err;
+            const error = new DatastoreOrmDatastoreError(`(${this.constructor.name}) Entity cannot be deleted. id (${(this as any).id}). Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
         }
 
         return [this, performanceHelper.readResult()];

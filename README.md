@@ -338,11 +338,6 @@ async function lockHelperExamples() {
 }
 ```
 
-# Samples: EntityHelper
-```typescript
-// TBC
-```
-
 
 # More Samples
 Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tree/master/tests) directory.
@@ -373,5 +368,4 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://www.npmjs.com/package/@google-cloud/firestore
 
 # To-do
-- consolidate all error messages and type (wrap all datastore errors and handle friendly errors)
 - able to generate/deploy composite config

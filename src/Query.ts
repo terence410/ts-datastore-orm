@@ -3,6 +3,7 @@ import * as DatastoreQuery from "@google-cloud/datastore/build/src/query";
 import {EventEmitter} from "events";
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
+import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Transaction} from "./Transaction";
@@ -66,7 +67,7 @@ export class Query<T extends typeof BaseEntity> {
 
         // check namespace
         if (ancestorKey.namespace !== this._namespace) {
-            throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the query namespace (${this._namespace}).`);
+            throw new DatastoreOrmOperationError(`(${this.entityType.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the query namespace (${this._namespace}).`);
         }
 
         this._ancestor = ancestorKey;
@@ -143,16 +144,30 @@ export class Query<T extends typeof BaseEntity> {
             this._query.start(this._lastRunQueryInfo.endCursor);
         }
 
-        // get entities
-        const [results, queryInfo] = await this._query.run();
-        this._lastRunQueryInfo = queryInfo;
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            // get entities
+            const [results, queryInfo] = await this._query.run();
+            this._lastRunQueryInfo = queryInfo;
 
-        for (const entityData of results) {
-            const entity = this.entityType.newFromEntityData(entityData, this._selectKey);
-            entities.push(entity);
+            for (const entityData of results) {
+                const entity = this.entityType.newFromEntityData(entityData, this._selectKey);
+                entities.push(entity);
+            }
+
+            return [entities, performanceHelper.readResult()];
+
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`(${this.entityType.name}) Query Run Error. Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
         }
-
-        return [entities, performanceHelper.readResult()];
     }
 
     public runStream(): IQueryStreamEvent<InstanceType<T>> {
@@ -161,13 +176,25 @@ export class Query<T extends typeof BaseEntity> {
         if (this._lastRunQueryInfo && this._lastRunQueryInfo.endCursor) {
             this._query.start(this._lastRunQueryInfo.endCursor);
         }
+
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+
+        // start stream
         const stream = this._query.runStream();
         stream.on("data", entityData => {
             const entity = this.entityType.newFromEntityData(entityData, this._selectKey);
             streamEvent.emit("data", entity);
         });
 
-        stream.on("error", error => {
+        stream.on("error", err => {
+            const error = new DatastoreOrmDatastoreError(`(${this.entityType.name}) Query Run Stream Error. Error: ${err.message}.`,
+                (err as any).code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
             streamEvent.emit("error", error);
         });
 

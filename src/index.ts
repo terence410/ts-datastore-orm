@@ -1,6 +1,5 @@
 import {BaseEntity} from "./BaseEntity";
 import {Batcher} from "./Batcher";
-import {casts} from "./casts";
 import {datastoreOrm} from "./datastoreOrm";
 import {Column} from "./decorators/Column";
 import {Entity} from "./decorators/Entity";
@@ -47,6 +46,5 @@ export {
     stats,
     namespaceStats,
     errorCodes,
-    casts,
     types,
 };

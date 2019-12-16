@@ -1,5 +1,11 @@
 import { assert, expect } from "chai";
-import {Batcher, DatastoreOrmDecoratorError, DatastoreOrmOperationError} from "../src";
+import {
+    Batcher,
+    datastoreOrm,
+    DatastoreOrmDatastoreError,
+    DatastoreOrmDecoratorError,
+    DatastoreOrmOperationError, Transaction
+} from "../src";
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
@@ -45,6 +51,24 @@ async function assertOperationError(callback: () => void, errorMessageRegex: Reg
     }
     assert.isFalse(isSuccess);
 }
+
+async function assertDatastoreError(callback: () => void, errorMessageRegex: RegExp) {
+    let isSuccess = false;
+    try {
+        await callback();
+        isSuccess = true;
+    } catch (err) {
+        assert.isTrue(err instanceof DatastoreOrmDatastoreError);
+        assert.match(err.message, errorMessageRegex);
+    }
+    assert.isFalse(isSuccess);
+}
+
+describe("Errors Test: Reset", () => {
+    it("truncate", async () => {
+        const [total, requestResponse] = await ErrorTest.truncate();
+    });
+});
 
 describe("Errors Test: Decorators", () => {
     it("Entity without id", async () => {
@@ -109,10 +133,6 @@ describe("Errors Test: Decorators", () => {
 });
 
 describe("Errors Test: Operations", () => {
-    it("truncate", async () => {
-        const [total, requestResponse] = await ErrorTest.truncate();
-    });
-
     it("Delete multiple times (valid)", async () => {
         const batcher = new Batcher();
         const [entity1] = await ErrorTest.create().save();
@@ -197,6 +217,13 @@ describe("Errors Test: Operations", () => {
         }, /The ancestor namespace .* is different/);
     });
 
+    it("Ancestor has different namespace in query", async () => {
+        await assertOperationError(async () => {
+            const [entity] = await ErrorTest.create().save();
+            const query = ErrorTestChild.query().setNamespace("namespace").setAncestor(entity);
+        }, /The ancestor namespace .* is different/);
+    });
+
     it("Update id for readonly entity save", async () => {
         await assertOperationError(async () => {
             const [entity] = await ErrorTest.create().save();
@@ -211,5 +238,114 @@ describe("Errors Test: Operations", () => {
             }
 
         }, /Entity is read only. id \(.*\)/);
+    });
+});
+
+describe("Errors Test: Datastore", () => {
+    it("Save deleted entity", async () => {
+        const [entity1] = await ErrorTest.create().save();
+        await entity1.delete();
+
+        await assertDatastoreError(async () => {
+            await entity1.save();
+        }, /Entity cannot be saved/);
+    });
+
+    it("Delete entity with error", async () => {
+        const entity1 = ErrorTest.create({id: -1}).setNamespace("not exist");
+
+        await assertDatastoreError(async () => {
+            await entity1.delete();
+        }, /Entity cannot be deleted/);
+    });
+
+    it("Find Error", async () => {
+        await assertDatastoreError(async () => {
+            const [entity1] = await ErrorTest.find({namespace: "not exist", id: 1});
+        }, /Find Error/);
+    });
+
+    it("Allocate Id Error", async () => {
+        await assertDatastoreError(async () => {
+            const [ids] = await ErrorTest.allocateIds(-1);
+        }, /Allocate Ids Error/);
+    });
+
+    it("Batch save error", async () => {
+        await assertDatastoreError(async () => {
+            const batcher = new Batcher();
+            const entity1 = ErrorTest.create({id: -1}).setNamespace("not exist");
+            await batcher.saveMany([entity1]);
+        }, /Batcher Save Error for insert/);
+    });
+
+    it("Batch delete error", async () => {
+        await assertDatastoreError(async () => {
+            const batcher = new Batcher();
+            const entity1 = ErrorTest.create({id: -1}).setNamespace("not exist");
+            await batcher.deleteMany([entity1]);
+        }, /Batcher Delete Error/);
+    });
+
+    it("Query run error", async () => {
+        await assertDatastoreError(async () => {
+            await ErrorTest.query().setNamespace("not exist").run();
+        }, /Query Run Error/);
+    });
+
+    it("Query stream error", async () => {
+        await new Promise(resolve => {
+            const stream = ErrorTest.query().setNamespace("not exist").runStream();
+            stream.on("error", err => {
+                assert.isTrue(err instanceof DatastoreOrmDatastoreError);
+                assert.match(err.message, /Query Run Stream Error/);
+                resolve();
+            });
+        });
+    });
+
+    it("Transaction find error", async () => {
+        await assertDatastoreError(async () => {
+            const transaction = new Transaction();
+            await transaction.run();
+            await transaction.find(ErrorTest, {namespace: "not exist", id: 1});
+        }, /Transaction Find Error/);
+    });
+
+    it("Transaction allocate ids error", async () => {
+        await assertDatastoreError(async () => {
+            const transaction = new Transaction();
+            await transaction.run();
+            await transaction.allocateIds(ErrorTest, -1);
+        }, /Transaction Allocate Ids Error/);
+    });
+
+    it("Transaction commit error", async () => {
+        await assertDatastoreError(async () => {
+            const transaction = new Transaction();
+            await transaction.run();
+            await transaction.commit();
+            await transaction.rollback();
+        }, /Transaction Rollback Error/);
+    });
+
+    it("Transaction commit error", async () => {
+        const [entity1] = await ErrorTest.create().save();
+
+        const transaction1 = new Transaction();
+        await transaction1.run();
+        await transaction1.find(ErrorTest, entity1.id);
+
+        const transaction2 = new Transaction();
+        await transaction2.run();
+        await transaction2.find(ErrorTest, entity1.id);
+
+        transaction1.save(entity1);
+        transaction2.save(entity1);
+
+        await assertDatastoreError(async () => {
+            await transaction1.commit();
+            await transaction2.commit();
+        }, /Transaction Commit Error/);
     });
 });

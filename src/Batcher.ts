@@ -1,6 +1,8 @@
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
+import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
+import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {IRequestResponse, ISaveResult} from "./types";
 
@@ -27,24 +29,58 @@ export class Batcher {
             // set isNew to false
             const insertSaveDataList = insertEntities.map(x => x.getSaveData());
             insertEntities.forEach(x => x.isNew = false);
-            const [insertResult] = await datastore.insert(insertSaveDataList);
 
-            // below should be the same as Base Entity
-            const newKeys = datastoreOrm.extractMutationKeys(insertResult as ISaveResult);
-            for (let i = 0; i < newKeys.length; i++) {
-                const newKey = newKeys[i];
-                const entity = insertEntities[i];
-                if (!(entity as any)._id) {
-                    (entity as any)._set("id", Number(newKey.id));
+            // friendly error
+            const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+            try {
+                const [insertResult] = await datastore.insert(insertSaveDataList);
+
+                // below should be the same as Base Entity
+                for (let i = 0; i < insertSaveDataList.length; i++) {
+                    const newKey = insertSaveDataList[i].key;
+                    const entity = insertEntities[i];
+                    // if we have no ide
+                    if (!(entity as any)._id) {
+                        (entity as any)._set("id", Number(newKey.id));
+                    }
                 }
+
+            } catch (err) {
+                const error = new DatastoreOrmDatastoreError(`Batcher Save Error for insert. Error: ${err.message}.`,
+                    err.code,
+                    err);
+                if (friendlyErrorStack) {
+                    error.stack = friendlyErrorStack;
+                }
+
+                throw error;
             }
         }
 
         // update
         if (updateEntities.length) {
             const updateSaveDataList = updateEntities.map(x => x.getSaveData());
-            const [updateResult] = await datastore.update(updateSaveDataList);
+            updateEntities.forEach(x => x.isNew = false);
+
+            // friendly error
+            const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+            try {
+                const [updateResult] = await datastore.update(updateSaveDataList);
+
+            } catch (err) {
+                const error = new DatastoreOrmDatastoreError(`Batcher Save Error for update. Error: ${err.message}.`,
+                    err.code,
+                    err);
+                if (friendlyErrorStack) {
+                    error.stack = friendlyErrorStack;
+                }
+
+                throw error;
+            }
         }
+
+        // emit events
+        entities.forEach(x => eventEmitters.emit("save", x));
 
         return [entities.length, performanceHelper.readResult()];
     }
@@ -54,7 +90,25 @@ export class Batcher {
 
         // mass delete
         const datastore = datastoreOrm.getDatastore();
-        await datastore.delete(entities.map(x => x.getKey()));
+
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            const [result] = await datastore.delete(entities.map(x => x.getKey()));
+
+            // emit events
+            entities.forEach(x => eventEmitters.emit("delete", x));
+
+        } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`Batcher Delete Error. Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
+        }
 
         return [entities.length, performanceHelper.readResult()];
     }

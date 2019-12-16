@@ -15,7 +15,7 @@ export class SubClass extends SubClassBase {
     public name: string = "";
 }
 
-describe("Default Test", () => {
+describe("Subclass Test", () => {
     it("truncate", async () => {
         await SubClass.truncate();
     });

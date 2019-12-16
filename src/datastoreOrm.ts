@@ -133,27 +133,6 @@ class DatastoreOrm {
         return entityMeta.excludeFromIndexes;
     }
 
-    /** @internal */
-    public extractMutationKeys(saveResult: ISaveResult): IKey[] {
-        const keys: IKey[] = [];
-
-        if (saveResult.mutationResults) {
-            for (const mutation of saveResult.mutationResults) {
-                if (mutation.key && mutation.key.path) {
-                    const paths = mutation.key.path.reduce((a, b) => {
-                        a.push(b.kind);
-                        a.push(b.name || Number(b.id));
-                        return a;
-                    }, [] as any[]);
-                    const key = this.getDatastore().key(paths);
-                    keys.push(key);
-                }
-            }
-        }
-
-        return keys;
-    }
-
     // endregion
     
     // region admin methods

@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {Transaction} from "../src";
+import {DatastoreOrmDatastoreError, Transaction} from "../src";
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
@@ -34,6 +34,7 @@ describe("Transaction Test", () => {
     it("standard transaction 1", async () => {
         const id1 = 1;
         const id2 = 2;
+        const newName = "New Name";
         const [user1] = await TransactionTest.create({id: id1, name: "Terence"}).save();
         const [user2] = await TransactionTest.create({id: id2, name: "Terence"}).save();
 
@@ -47,6 +48,8 @@ describe("Transaction Test", () => {
                 const [ids] = await transaction.allocateIds(TransactionTest, 1);
                 child2 = TransactionTestChild.create({name: "Task Group", id: ids[0]});
                 child2.setAncestor(user1a);
+                user1a.name = newName;
+                transaction.save(user1a);
                 transaction.save(child2);
                 transaction.delete(user2a);
                 return child2;
@@ -56,9 +59,23 @@ describe("Transaction Test", () => {
         }, {maxRetry: 2});
 
         // we have a child
-        assert.equal(transactionResponse.savedEntities.length, 1);
+        assert.equal(transactionResponse.savedEntities.length, 2);
         assert.equal(transactionResponse.deletedEntities.length, 1);
         assert.isDefined(child1);
+        if (child1) {
+            assert.isTrue(child1.id > 0);
+
+            // child id is correct
+            const [child1a] = await TransactionTestChild.find({ancestor: user1, id: child1.id});
+            assert.isDefined(child1a);
+        }
+
+        // entity updated
+        const [user1b] = await TransactionTest.find(id1);
+        assert.isDefined(user1b);
+        if (user1b) {
+            assert.equal(user1b.name, newName);
+        }
 
         // entity removed
         const [user2b] = await TransactionTest.find(id2);
@@ -119,7 +136,7 @@ describe("Transaction Test", () => {
             ]);
             assert.isTrue(false);
         } catch (err) {
-            assert.equal(err.code, errorCodes.ABORTED);
+            assert.isTrue(err instanceof DatastoreOrmDatastoreError);
         }
 
         try {
