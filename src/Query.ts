@@ -1,4 +1,5 @@
 import * as Datastore from "@google-cloud/datastore";
+import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import * as DatastoreQuery from "@google-cloud/datastore/build/src/query";
 import {EventEmitter} from "events";
 import {BaseEntity} from "./BaseEntity";
@@ -59,6 +60,7 @@ export class Query<T extends typeof BaseEntity> {
     public setNamespace(value: string) {
         this._query.namespace = value;
         this._namespace = value;
+
         return this;
     }
 
@@ -208,6 +210,54 @@ export class Query<T extends typeof BaseEntity> {
         });
 
         return (streamEvent as any) as IQueryStreamEvent<InstanceType<T>>;
+    }
+
+    public getSQL(): string {
+        const kind = this._query.kinds[0];
+        let select = "*";
+
+        if (this._query.selectVal.length) {
+            select = this._query.selectVal.join(", ");
+        }
+
+        for (const groupBy of this._query.groupByVal) {
+            select = ` DISTINCT ON (${this._query.groupByVal.join(", ")}) ${select}`;
+        }
+
+        let sql =  `SELECT ${select} from \`${kind}\``;
+
+        if (this._query.filters.length) {
+            const wheres: string[] = [];
+            for (const filter of this._query.filters) {
+                if (filter.val instanceof DatastoreEntity.entity.Key) {
+                    const key = filter.val as DatastoreEntity.entity.Key;
+                    const op = filter.op === "HAS_ANCESTOR" ? "HAS ANCESTOR" : filter.op;
+                    const keyName = `Key(Namespace("${this._namespace}"), ${key.path.join(", ")})`;
+                    wheres.push(`__key__ ${op} ${keyName}`);
+
+                } else if (typeof filter.val === "string") {
+                    wheres.push(`${filter.name} ${filter.op} "${filter.val}"`);
+                } else {
+                    wheres.push(`${filter.name} ${filter.op} ${filter.val}`);
+                }
+
+            }
+            sql += ` WHERE ${wheres.join(" AND ")}`;
+        }
+
+        for (const order of this._query.orders) {
+            sql += ` ORDER BY ${order.name} ${order.sign ? "DESC" : "ASC"}`;
+        }
+
+        if (this._query.limitVal > 0) {
+            sql += ` LIMIT ${this._query.limitVal}`;
+        }
+
+        if (this._query.offsetVal > 0) {
+            sql += ` OFFSET ${this._query.offsetVal}`;
+        }
+
+        return sql;
     }
     
     // region private methods

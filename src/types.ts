@@ -44,7 +44,8 @@ export type ITransactionResponse = {
     hasCommitted: boolean;
     totalRetry: number;
     executionTime: number;
-    savedEntities: BaseEntity[];
+    createdEntities: BaseEntity[];
+    updatedEntities: BaseEntity[];
     deletedEntities: BaseEntity[];
 };
 
@@ -118,7 +119,7 @@ export interface IQueryStreamEvent<T> {
 }
 
 // event
-export type IEventsType = "save" | "delete";
+export type IEventsType = "create" | "update" | "delete";
 export interface IEvents<T> {
     on(type: IEventsType, callback: (entity: T) => void): this;
     addListener(type: IEventsType, callback: (entity: T) => void): this;

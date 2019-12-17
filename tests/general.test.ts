@@ -153,15 +153,15 @@ describe("General Test: Entity Group", () => {
         await task2.save();
 
         // query
-        const [taskGroups1] = await TaskGroup.query().setAncestor(user1).run();
-        assert.equal(taskGroups1.length, 1);
+        const [taskGroupList1] = await TaskGroup.query().setAncestor(user1).run();
+        assert.equal(taskGroupList1.length, 1);
 
-        const [taskGroups2] = await TaskGroup.query().filterKey("=", taskGroup1.getKey()).run();
-        assert.equal(taskGroups2.length, 1);
+        const [taskGroupList2] = await TaskGroup.query().filterKey("=", taskGroup1.getKey()).run();
+        assert.equal(taskGroupList2.length, 1);
 
         const key = datastoreOrm.createKey([User, user1.id, TaskGroup, taskGroup1.id]);
-        const [taskGroups3] = await TaskGroup.query().filterKey("=", key).run();
-        assert.equal(taskGroups3.length, 1);
+        const [taskGroupList3] = await TaskGroup.query().filterKey("=", key).run();
+        assert.equal(taskGroupList3.length, 1);
         
         // find many
         const [taskGroups4] = await TaskGroup.findMany({ancestor: user1, ids: [1, 2]});
@@ -169,5 +169,13 @@ describe("General Test: Entity Group", () => {
 
         const [task3] = await Task.find({ancestor: taskGroup1, id: 1});
         assert.isDefined(task3);
+
+        if (task3) {
+            const [taskGroup3] = await task3.getAncestor<TaskGroup>();
+            assert.isDefined(taskGroup3);
+            if (taskGroup3) {
+                assert.deepEqual(taskGroup3.getKey().serialized, taskGroup1.getKey().serialized);
+            }
+        }
     });
 });

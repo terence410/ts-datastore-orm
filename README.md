@@ -2,24 +2,34 @@
 
 [![NPM version](https://badge.fury.io/js/ts-datastore-orm.png)](https://www.npmjs.com/package/ts-datastore-orm)
 
-[ts-datastore-orm](https://www.npmjs.com/package/ts-datastore-orm) targets to provide a structural Orm feature for Datastore.
+[ts-datastore-orm](https://www.npmjs.com/package/ts-datastore-orm) targets to provide a strong typed and structural ORM feature for Datastore (Firestore in Datastore mode).
 
 This package is mainly built on top of [nodejs-datastore](https://github.com/googleapis/nodejs-datastore) provided by google.
+
+This package also heavily tested with all features. You can find all the test cases [here](https://github.com/terence410/ts-datastore-orm/blob/master/tests/). 
+
+You can also compare the native performance of [nodejs-datastore](https://github.com/terence410/ts-datastore-orm/blob/master/src/performance/datastore.performance.ts) with [ts-datastorem-orm](https://github.com/terence410/ts-datastore-orm/blob/master/src/performance/datastoreorm.performance.ts). Basically there is no significant overhead compared with native nodejs-datastore package.
 
 # Feature
 - Covering all features of datastore: query, transaction, ancestor, index, allocateIds, namespace, etc..
 - Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
 - Support default values and variable casting. This will be useful if you decided to add/modify columns to an entity.
 - Provide execution time for every request. It only take up around 0.3s for 1 million measurements. 
-- Switching the namespace of entity easily.
-- LockHelper: Simple but robust distributed lock for atomic updates. Useful for small to medium server without worry of scaling.
 
 # Project Setup
 - npm install ts-datastore-orm
-- In tsconfig.json, set "experimentalDecorators" to true. 
-- In tsconfig.json, set "emitDecoratorMetadata" to true. 
-- In tsconfig.json, set "strictNullChecks" to true. (To avoid type confusion in entity)
-- Create datastoreorm.default.json in the project root folder.
+- In tsconfig.json
+  - set "experimentalDecorators" to true. 
+  - set "emitDecoratorMetadata" to true. 
+  - set "strictNullChecks" to true.
+- Create ./datastoreorm.default.json in the project root folder.
+```json5
+{
+  "keyFilename": "datastoreServiceAccount.json",
+  "friendlyError": true, // for easier debugging of some promise error, enable this if you found some error log hard to trace
+  "namespace": "namespace" // default namespace for all the entities, leave it blank will use default namespace
+}
+```
 - Generate datastore-service-account.json from Goolge APIs. (Details won't cover here)
 
 # Environment Variable
@@ -28,25 +38,18 @@ This package is mainly built on top of [nodejs-datastore](https://github.com/goo
   - if the file is not found, it will load the config file "./datastoreorm.default.json"
 - export DATASTOREORM_CONFIG_PATH=./path/custom.json
   - it will try to load the config file "./path/custom.json"
-  
-# Config file format (./datastoreorm.default.json)
-
-```json5
-{
-  "keyFilename": "datastoreServiceAccount.json",
-  "friendlyError": true, // for easier debugging of some promise error, enable this if you found some error log hard to trace
-  "namespaec": "namespace" // default namespace for all the entities
-}
-```
 
 # Quick Start
 ```typescript
 import {BaseEntity, Column, Entity} from "ts-datastore-orm";
 
-@Entity({namespace: "testing", kind: "user"})
+@Entity({kind: "user"})
 export class User extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
+    
+    @Column({index: true})
+    public total: number = 0;
 }
 
 async function main() {
@@ -54,22 +57,11 @@ async function main() {
     await user.save();
     const id = user.id;
 }
-
 ```
 
-# Samples: Define Entity and general operation
+# General Usage
 ```typescript
-import {
-    BaseEntity,
-    Batcher,
-    Column,
-    datastoreOrm,
-    Entity,
-    Transaction,
-    IncrementHelper,
-    DescendentHelper,
-    LockHelper,
-} from "ts-datastore-orm";
+import {BaseEntity, Batcher, Column, datastoreOrm, Entity, Transaction, DatastoreOrmDatastoreError, DatastoreOrmError} from "ts-datastore-orm";
 
 @Entity({namespace: "testing", kind: "user"})
 export class User extends BaseEntity {
@@ -113,39 +105,27 @@ export class TaskGroup extends BaseEntity {
     public number: number = 0;
 }
 
-async function operationExamples() {
-    await User.truncate();
-    const [ids] = await User.allocateIds(1);
-}
-
-async function keyExamples() {
-    const key1 = datastoreOrm.createKey([User, 1]);
-    const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
-    const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
-    const key4 = datastoreOrm.getDatastore().key(["kind1", 1, "kind2", 2]);
-    const key5 = User.create({id: 1}).getKey();
-    const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
-}
-
 async function entityExamples() {
     const user1 = User.create({id: 1});
-    const [requestResponse1] = await user1.save();
-    const [user2, requestResponse2] = await User.find(user1.id);
+    const [user2, requestResponse1] = await User.create({id: 1}).save();
+    const [user3, requestResponse2] = await User.find(user1.id);
 
-    const user3 = new User();
-    const id3 = user3.id;
-    const [requestResponse3] = await user3.save();
-    const [user4, requestResponse4] = await User.query().filter("id", "=", user3.id).runOnce();
-
+    const user4 = new User();
+    const isNew = user4.isNew;
+    const values = user4.getValues();
+    await user4.save();
+    await user4.delete();
+    const [user5] = await User.query().filter("id", "=", user4.id).runOnce();
+    const [user6] = await User.find(user4.id);
 }
 
 async function batcherExamples() {
     const batcher = new Batcher();
-    const users3 = Array(10).fill(0).map((x, i) => {
+    const users = Array(10).fill(0).map((x, i) => {
         return User.create({number: i});
     });
-    const [requestResponse3] = await batcher.saveMany(users3);
-    const [requestResponse4] = await batcher.deleteMany(users3);
+    const [total1, requestResponse1] = await batcher.saveMany(users);
+    const [total2, requestResponse2] = await batcher.deleteMany(users);
 }
 
 async function ancestorExamples() {
@@ -153,6 +133,9 @@ async function ancestorExamples() {
     const [taskGroup1] = await TaskGroup.create({id: 1, name: "group 1"})
         .setAncestor(user1)
         .save();
+
+    // get back the user
+    const [user2] = await taskGroup1.getAncestor<User>();
 
     // ignore the strong type on method call
     const [taskGroup2] = await TaskGroup.query()
@@ -169,30 +152,56 @@ async function ancestorExamples() {
         .runOnce();
 
     const key1 = datastoreOrm.createKey([User, 1]);
-    const key2 = datastoreOrm.createKey([TaskGroup, 1]);
-    key2.parent = key1;
+    const key2 = datastoreOrm.createKey({ancestorKey: key1, path: [TaskGroup, 1]});
     const [taskGroup5] = await TaskGroup.query()
         .filterKey("=", key2)
         .runOnce();
 
     const key3 = datastoreOrm.createKey([User, 1, TaskGroup, 1]);
-    const [taskGroup6] = await TaskGroup.query()
-        .filterKey("=", key3)
-        .runOnce();
-
-    const [taskGroups1] = await TaskGroup.query()
+    const [taskGroup6] = await TaskGroup.find({ancestor: user1, id: taskGroup1.id});
+    const [taskGroupList1] = await TaskGroup.query()
         .setAncestor(user1)
         .run();
+
+
 }
 
+async function eventExamples() {
+    const events = EventTest.getEvents();
+    events.on("create", entity => {
+
+    });
+    events.on("update", entity => {
+
+    });
+    events.on("delete", entity => {
+
+    });
+}
+
+async function operationExamples() {
+    await User.truncate();
+    const [ids] = await User.allocateIds(1);
+}
+
+async function keyExamples() {
+    const key1 = datastoreOrm.createKey([User, 1]);
+    const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
+    const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
+    const key4 = datastoreOrm.getDatastore().key({namespace: "namespace", path: ["kind1", 1, "kind2", 2]});
+    const key5 = User.create({id: 1}).getKey();
+    const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
+}
 ```
 
-# Samples: Query
+# Query
+Query works in the same way as nodejs-datastore. It come withs paging for you to loop data more easily.
 ```typescript
 async function queryExamples() {
     const [user1, requestResponse1] = await User.query().runOnce();
-    const [users1, requestResponse2] = await User.findMany([1, 2, 3, 4, 5]);
-    const [users2, requestResponse3] = await User.query().run();
+    const [userList1, requestResponse2] = await User.findMany([1, 2, 3, 4, 5]);
+    const [userList2, requestResponse3] = await User.findMany({ancestor: user1, ids: [1, 2, 3, 4, 5]});
+    const [userList3, requestResponse4] = await User.query().run();
 
     const user2 = User.create({id: 1});
     const query = TaskGroup.query()
@@ -225,31 +234,48 @@ async function queryExamples() {
 }
 ```
 
-# Samples: Transaction
+# Transaction
+Transaction.execute is simple and elegant way to play with Transaction easily. You don't have to worry about transaction rollback and spot out precisely the type of errors being throw.  
 ```typescript
 async function transaction1Examples() {
-    const [taskGroup1, transactionResponse1] = await Transaction.execute(async transaction => {
-        let taskGroup2: TaskGroup | undefined;
-        const [user1, requestResponse1] = await transaction.find(User, 1);
-        const [users2, requestResponse2] = await transaction.findMany(User, [1]);
+    Transaction.setDefaultOptions({maxRetry: 0, delay: 50, quickRollback: true, readOnly: false});
+    
+    try {
+        const [taskGroup1, transactionResponse1] = await Transaction.execute(async transaction => {
+            let taskGroup2: TaskGroup | undefined;
+            const [user1, requestResponse1] = await transaction.find(User, 1);
+            const [userList1, requestResponse2] = await transaction.findMany(User, [1]);
 
-        if (user1) {
-            taskGroup2 = TaskGroup.create({name: "Task Group"});
-            taskGroup2.setAncestor(user1);
-            transaction.save(taskGroup2);
-            return taskGroup2;
-        } else {
-            transaction.rollback(); // not necessary to await for it for better performance
-        }
-    }, {maxRetry: 5});
-
-    if (transactionResponse1.isSuccess && taskGroup1) {
-        const taskGroup3Id = taskGroup1.id;
-        for (const entity of transactionResponse1.savedEntities) {
-            if (entity instanceof TaskGroup) {
-                const taskGroup = entity as TaskGroup;
-                const taskGroupId = taskGroup.id;
+            if (user1) {
+                taskGroup2 = TaskGroup.create({name: "Task Group"});
+                taskGroup2.setAncestor(user1);
+                transaction.save(taskGroup2);
+                return taskGroup2;
+            } else {
+                transaction.rollback(); // not necessary to await for it for better performance
             }
+        }, {maxRetry: 5});
+
+        if (transactionResponse1.hasCommitted && taskGroup1) {
+            const taskGroup3Id = taskGroup1.id;
+            for (const entity of transactionResponse1.createdEntities) {
+                if (entity instanceof TaskGroup) {
+                    const taskGroup = entity as TaskGroup;
+                    const taskGroupId = taskGroup.id;
+                }
+            }
+
+            for (const entity of transactionResponse1.updatedEntities) {
+                
+            }
+        }
+    } catch (err) {
+        if (err instanceof DatastoreOrmDatastoreError) {
+            // err from data store
+        } else if (err instanceof DatastoreOrmError) {
+            // other library error
+        } else {
+            // your own logic error
         }
     }
 }
@@ -257,7 +283,7 @@ async function transaction1Examples() {
 async function transaction2Examples() {
     const transaction1 = new Transaction();
     await transaction1.run();
-    const [user1, queryResponse3] = await transaction1.find(User, 1);
+    const [user1, requestResponse3] = await transaction1.find(User, 1);
     try {
         if (user1) {
             transaction1.save(user1);
@@ -271,9 +297,33 @@ async function transaction2Examples() {
 }
 ```
 
-# Samples: Relationship Helper
+# Errors
+```typescript
+async function errorExamples() {
+    try {
+        const [user1] = await User.create().save();
+    } catch (err) {
+        // all errors extends DatastoreOrmError
+        if (err instanceof DatastoreOrmError) {
+            if (err instanceof DatastoreOrmDatastoreError) {
+                // errors related to the google datastore
+
+            } else if (err instanceof DatastoreOrmOperationError) {
+                // errors related to the library
+
+            } else if (err instanceof DatastoreOrmDecoratorError) {
+                // errors related to your decorator
+            }
+        }
+    }
+}
+```
+
+# Descendent Helper
 Helps you to query descendant more easily, support transaction.
 ```typescript
+import {IncrementHelper} from "ts-datastore-orm";
+
 async function descendentHelperExamples() {
     const [user1] = await User.create({id: 1}).save();
     const descendentHelper1 = new DescendentHelper(user1);
@@ -290,9 +340,12 @@ async function descendentHelperExamples() {
 }
 ```
 
-# Samples: IncrementHelper
-Helps you to do atomic increment on an entity. Not suggest you use massively on single to avoid hotspots issue. 
+# IncrementHelper
+Helps you to do atomic increment on an entity. Not suggest you use massively on single entity to avoid hotspots issue. 
+
 ```typescript
+import {IncrementHelper} from "ts-datastore-orm";
+
 async function incrementHelperExamples() {
     const [user1] = await User.create().save();
     const incrementHelper = new IncrementHelper(user1);
@@ -301,10 +354,13 @@ async function incrementHelperExamples() {
 }
 ```
 
-# Samples: LockHelper
+# LockHelper
 A simple and robust locking helper for distributed servers. Useful for small to medium server. 
 If you have performance considering, please use some other tools like [Redis Lock](https://redis.io/topics/distlock). 
+
 ```typescript
+import {LockHelper} from "ts-datastore-orm";
+
 async function lockHelperExamples() {
     const key = "test1";
     LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, quickRelease: true, throwReleaseError: false});
@@ -313,7 +369,7 @@ async function lockHelperExamples() {
     // delay: the delay in ms waiting for a retry
     // quickRelease: release the lock in background without waiting the response from server (for performance optimization)
     // throwReleaseError: whether you wanted to care any release error
-    
+
     const lockHelper1 = new LockHelper(key, {expire: 1000, maxRetry: 5, delay: 100});
     try {
         const [isNewLock] = await lockHelper1.acquire();
@@ -322,7 +378,11 @@ async function lockHelperExamples() {
         // isReleased = true // an lock is in released state (whether you released it or it is expired)
         // isReleased = false // an lock still exist, in the case that your lock is expired and acquired by others
     } catch (err) {
-        //
+        if (err instanceof DatastoreOrmLockError) {
+            // if you failed to acquire the lock
+        } else {
+            // other logic error
+        }
     }
 
     try {
@@ -332,8 +392,8 @@ async function lockHelperExamples() {
     } catch (err) {
         //
     }
-    
-    // remove all locsk
+
+    // remove all lock
     await LockHelper.truncate();
 }
 ```
@@ -355,11 +415,6 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 | Admin | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/admin.test.ts) |
 | Helpers | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers.test.ts) |
 | LockHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/lockHelper.test.ts) |
-
-# Performance Remarks
-- Around 30ms to update 1 entity
-- Around 30ms to update 10 batched entities
-- Around 500ms to update 100 batched entities
 
 # Useful links
 - https://googleapis.dev/nodejs/datastore/5.0.0/index.html

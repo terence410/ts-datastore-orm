@@ -13,7 +13,7 @@ export class User extends BaseEntity {
     @Column({index: true})
     public string: string = "";
 
-    @Column()
+    @Column({index: true})
     public number: number = 10;
 
     @Column()

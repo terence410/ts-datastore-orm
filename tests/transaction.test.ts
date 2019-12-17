@@ -59,7 +59,8 @@ describe("Transaction Test", () => {
         }, {maxRetry: 2});
 
         // we have a child
-        assert.equal(transactionResponse.savedEntities.length, 2);
+        assert.equal(transactionResponse.createdEntities.length, 1);
+        assert.equal(transactionResponse.updatedEntities.length, 1);
         assert.equal(transactionResponse.deletedEntities.length, 1);
         assert.isDefined(child1);
         if (child1) {

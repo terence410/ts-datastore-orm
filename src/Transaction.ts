@@ -28,7 +28,7 @@ const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const defaultOptions: ITransactionOptions = {delay: 50, maxRetry: 0, quickRollback: true, readOnly: false};
 
 export class Transaction {
-    public static setDefaultLockOptions(lockOptions: Partial<ITransactionOptions> = {}) {
+    public static setDefaultOptions(lockOptions: Partial<ITransactionOptions> = {}) {
         Object.assign(defaultOptions, lockOptions);
     }
     
@@ -42,7 +42,8 @@ export class Transaction {
             hasCommitted: false,
             totalRetry: 0,
             executionTime: 0,
-            savedEntities: [],
+            createdEntities: [],
+            updatedEntities: [],
             deletedEntities: [],
         };
 
@@ -70,7 +71,8 @@ export class Transaction {
                     transactionResponse.hasCommitted = true;
                 }
 
-                transactionResponse.savedEntities = transaction.savedEntities;
+                transactionResponse.createdEntities = transaction.createdEntities;
+                transactionResponse.updatedEntities = transaction.updatedEntities;
                 transactionResponse.deletedEntities = transaction.deletedEntities;
 
                 // break out the retry loop
@@ -112,8 +114,9 @@ export class Transaction {
     public datastoreTransaction: DataStore.Transaction;
 
     // entities pending for save
-    public savedEntities: BaseEntity[] = [];
-    public savedKeys: IKey[] = [];
+    public createdKeys: IKey[] = [];
+    public createdEntities: BaseEntity[] = [];
+    public updatedEntities: BaseEntity[] = [];
     public deletedEntities: BaseEntity[] = [];
 
     // internal handling for rollback
@@ -129,8 +132,9 @@ export class Transaction {
     // start transaction
     public async run() {
         // rest the data (in case the transaction is reused)
-        this.savedEntities = [];
-        this.savedKeys = [];
+        this.createdKeys = [];
+        this.createdEntities = [];
+        this.updatedEntities = [];
         this.deletedEntities = [];
         this.skipCommit = false;
 
@@ -157,7 +161,7 @@ export class Transaction {
         const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
         try {
             const [result] = await this.datastoreTransaction.commit();
-            this._processSavedKeys();
+            this._processCreatedKeys();
             this._processEvents();
             return [performanceHelper.readResult()];
 
@@ -175,8 +179,9 @@ export class Transaction {
 
     public async rollback() {
         // reset data
-        this.savedEntities = [];
-        this.savedKeys = [];
+        this.createdKeys = [];
+        this.createdEntities = [];
+        this.updatedEntities = [];
         this.deletedEntities = [];
         this.skipCommit = true;
 
@@ -271,18 +276,20 @@ export class Transaction {
             const insertSaveDataList = insertEntities.map(x => x.getSaveData());
             insertEntities.forEach(x => x.isNew = false);
             this.datastoreTransaction.insert(insertSaveDataList);
-            this.savedKeys = this.savedKeys.concat(insertSaveDataList.map(x => x.key));
+            this.createdKeys = this.createdKeys.concat(insertSaveDataList.map(x => x.key));
+
+            // append to created entities
+            this.createdEntities = this.createdEntities.concat(entities);
         }
 
         if (updateEntities.length) {
             updateEntities.forEach(x => x.isNew = false);
             const updateSaveDataList = updateEntities.map(x => x.getSaveData());
             this.datastoreTransaction.update(updateSaveDataList);
-            this.savedKeys = this.savedKeys.concat(updateSaveDataList.map(x => x.key));
-        }
 
-        // append to saved entities
-        this.savedEntities = this.savedEntities.concat(entities);
+            // append to updated entities
+            this.updatedEntities = this.updatedEntities.concat(entities);
+        }
     }
 
     public delete<T extends BaseEntity>(entity: T) {
@@ -335,10 +342,10 @@ export class Transaction {
 
     // region private methods
 
-    private _processSavedKeys() {
-        for (let i = 0; i < this.savedKeys.length; i++) {
-            const entity = this.savedEntities[i];
-            const newKey = this.savedKeys[i];
+    private _processCreatedKeys() {
+        for (let i = 0; i < this.createdKeys.length; i++) {
+            const entity = this.createdEntities[i];
+            const newKey = this.createdKeys[i];
             if (!(entity as any)._id) {
                 (entity as any)._set("id", Number(newKey.id));
             }
@@ -347,7 +354,8 @@ export class Transaction {
 
     private _processEvents() {
         // emit events
-        this.savedEntities.forEach(x => eventEmitters.emit("save", x));
+        this.createdEntities.forEach(x => eventEmitters.emit("create", x));
+        this.updatedEntities.forEach(x => eventEmitters.emit("update", x));
         this.deletedEntities.forEach(x => eventEmitters.emit("delete", x));
     }
 

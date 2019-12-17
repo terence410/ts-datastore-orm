@@ -80,7 +80,8 @@ export class Batcher {
         }
 
         // emit events
-        entities.forEach(x => eventEmitters.emit("save", x));
+        insertEntities.forEach(x => eventEmitters.emit("create", x));
+        updateEntities.forEach(x => eventEmitters.emit("update", x));
 
         return [entities.length, performanceHelper.readResult()];
     }

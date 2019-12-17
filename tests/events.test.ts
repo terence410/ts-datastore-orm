@@ -29,21 +29,17 @@ describe("Event Test", () => {
         const events = EventTest.getEvents();
 
         const promise1 = new Promise(resolve => {
-            events.on("save", entity => {
-                if (entity.isRecentlyCreated) {
-                    sequence.push("create");
-                    resolve(entity);
-                }
+            events.on("create", entity => {
+                sequence.push("create");
+                resolve(entity);
             });
         });
 
         const promise2 = new Promise(resolve => {
-            events.on("save", entity => {
-                if (!entity.isRecentlyCreated) {
-                    sequence.push("update");
-                    resolve(entity);
-                }
-            });
+            events.on("update", entity => {
+                sequence.push("update");
+                resolve(entity);
+        });
         });
 
         const promise3 = new Promise(resolve => {
@@ -70,20 +66,16 @@ describe("Event Test", () => {
         const events = EventTest.getEvents();
 
         const promise1 = new Promise(resolve => {
-            events.on("save", entity => {
-                if (entity.isRecentlyCreated) {
-                    sequence.push("create");
-                    resolve(entity);
-                }
+            events.on("create", entity => {
+                sequence.push("create");
+                resolve(entity);
             });
         });
 
         const promise2 = new Promise(resolve => {
-            events.on("save", entity => {
-                if (!entity.isRecentlyCreated) {
-                    sequence.push("update");
-                    resolve(entity);
-                }
+            events.on("update", entity => {
+                sequence.push("update");
+                resolve(entity);
             });
         });
 
@@ -110,20 +102,16 @@ describe("Event Test", () => {
 
         const events = EventTest.getEvents();
         const promise1 = new Promise(resolve => {
-            events.on("save", entity => {
-                if (entity.isRecentlyCreated) {
-                    sequence.push("create");
-                    resolve(entity);
-                }
-            });
+            events.on("create", entity => {
+                sequence.push("create");
+                resolve(entity);
+        });
         });
 
         const promise2 = new Promise(resolve => {
-            events.on("save", entity => {
-                if (!entity.isRecentlyCreated) {
-                    sequence.push("update");
-                    resolve(entity);
-                }
+            events.on("update", entity => {
+                sequence.push("update");
+                resolve(entity);
             });
         });
 

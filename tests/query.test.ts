@@ -48,6 +48,12 @@ export class QueryTest extends BaseEntity {
 export class QueryTestChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
+
+    @Column({index: true})
+    public number: number = 0;
+
+    @Column({index: true})
+    public string: string = "";
 }
 
 const total = 50;
@@ -262,5 +268,36 @@ describe("Query Test", () => {
             .filter("id", "=", queryTestChild2.id)
             .runOnce();
         assert.isDefined(queryTestChild5);
+
+        // get back the ancestor
+        const [ancestor1] = await queryTestChild1.getAncestor();
+        assert.isDefined(ancestor1);
+        if (ancestor1) {
+            assert.isTrue(ancestor1 instanceof QueryTest);
+        }
+
+        const [ancestor2] = await queryTestChild2.getAncestor();
+        assert.isDefined(ancestor2);
+        if (ancestor2) {
+            assert.isTrue(ancestor2 instanceof QueryTestChild);
+        }
+    });
+
+    it("query: sql", async () => {
+        const [queryTestChild] = await QueryTestChild.query().runOnce();
+
+        if (queryTestChild) {
+            const [ancestor] = await queryTestChild.getAncestor();
+            const query = QueryTestChild.query()
+                .filterKey("=", queryTestChild.getKey())
+                .setAncestor(ancestor as any)
+                .selectKey()
+                .groupByAny("string")
+                .order("number", {descending: true})
+                .offset(0)
+                .limit(100);
+            const sql = query.getSQL();
+            assert.match(sql, /SELECT/);
+        }
     });
 });

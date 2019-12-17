@@ -160,7 +160,6 @@ export class BaseEntity {
         }
         entity.setNamespace(key.namespace || "");
         entity._isNew = false;
-        entity._isRecentlyCreated = false;
         entity._rawData = data;
         entity._isReadOnly = isReadOnly;
         return entity;
@@ -169,7 +168,6 @@ export class BaseEntity {
     // endregion
 
     private _isNew = true;
-    private _isRecentlyCreated = true;
     private _isReadOnly = false;
     private _ancestorKey: IKey | undefined;
     private _id: number | string = "";
@@ -191,12 +189,7 @@ export class BaseEntity {
 
     /** @internal */
     public set isNew(value) {
-        this._isRecentlyCreated = this._isNew; // update recently created based on isNew Value
         this._isNew = value;
-    }
-
-    public get isRecentlyCreated(): boolean {
-        return this._isRecentlyCreated;
     }
 
     public get isReadOnly(): boolean {
@@ -340,9 +333,15 @@ export class BaseEntity {
                     this._set("id", Number(saveData.key.id));
                 }
 
+                // emit event
+                eventEmitters.emit("create", this);
+
             } else {
                 this.isNew = false;
                 const [updateResult] = await datastore.update(saveData);
+
+                // emit event
+                eventEmitters.emit("update", this);
 
             }
         } catch (err) {
@@ -355,9 +354,6 @@ export class BaseEntity {
 
             throw error;
         }
-
-        // emit event
-        eventEmitters.emit("save", this);
 
         return [this, performanceHelper.readResult()];
     }
@@ -389,6 +385,29 @@ export class BaseEntity {
         }
 
         return [this, performanceHelper.readResult()];
+    }
+
+    public async getAncestor<T extends BaseEntity>(): Promise<[T | undefined, IRequestResponse]> {
+        const requestResponse = {executionTime: 0};
+        const key = this.getKey();
+        const ancestorKey = key.parent;
+        if (!ancestorKey) {
+            return [undefined, requestResponse];
+        }
+
+        const ancestorEntityType = datastoreOrm.getEntityByKind(ancestorKey.kind);
+        if (!ancestorEntityType) {
+            return [undefined, requestResponse];
+        }
+
+        const ancestorEntityMeta = datastoreOrm.getEntityMeta(ancestorEntityType);
+        const [ancestor, requestResponse1] = await (ancestorEntityType as typeof BaseEntity)
+            .query()
+            .setNamespace(ancestorKey.namespace || "")
+            .filterKey("=", ancestorKey)
+            .runOnce();
+
+        return [ancestor as T, requestResponse1];
     }
 
     public toJSON() {

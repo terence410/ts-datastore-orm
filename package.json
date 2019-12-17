@@ -1,6 +1,6 @@
 {
   "name": "ts-datastore-orm",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A full functional Datastore Orm library written in Typescript.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -45,6 +45,7 @@
   "author": "Terence",
   "keywords": [
     "datastore",
+    "google datastore",
     "datastore orm",
     "transaction",
     "google cloud",
