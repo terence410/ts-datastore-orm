@@ -3,3 +3,4 @@ tests
 build/performance
 prepareTest.ts
 src
+.idea

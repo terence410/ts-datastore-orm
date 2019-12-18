@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ts-firestore-orm.iml" filepath="$PROJECT_DIR$/.idea/ts-firestore-orm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ts-datastore-orm.iml" filepath="$PROJECT_DIR$/.idea/ts-datastore-orm.iml" />
     </modules>
   </component>
 </project>

@@ -15,4 +15,4 @@ jobs:
         provider: npm
         email: "$NPM_EMAIL"
         api_key: "$NPM_TOKEN"
-        cleanup: true
+        cleanup: false
