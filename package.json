@@ -1,13 +1,11 @@
 {
   "name": "ts-datastore-orm",
   "version": "0.1.8",
-  "description": "A full functional Datastore Orm library written in Typescript.",
+  "description": "ts-datastore-orm targets to provide a strong typed and structural ORM feature for Datastore (Firestore in Datastore mode).",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
     "test": "",
-    "performance-datastoreorm": "tsc & node ./build/performance/datastoreorm.performance.js",
-    "performance-datastore": "tsc & node ./build/performance/datastore.performance.js",
     "test-all": "mocha --exit --timeout 20000 -r ts-node/register tests/*.ts",
     "test-general": "mocha --exit --timeout 20000 -r ts-node/register tests/general.test.ts",
     "test-query": "mocha --exit --timeout 20000 -r ts-node/register tests/query.test.ts",
@@ -21,6 +19,8 @@
     "test-cast": "mocha --exit --timeout 20000 -r ts-node/register tests/cast.test.ts",
     "test-errors": "mocha --exit --timeout 20000 -r ts-node/register tests/errors.test.ts",
     "test-admin": "mocha --exit --timeout 20000 -r ts-node/register tests/admin.test.ts",
+    "performance-datastoreorm": "tsc & node ./build/performance/datastoreorm.performance.js",
+    "performance-datastore": "tsc & node ./build/performance/datastore.performance.js",
     "patch": "npm version patch",
     "build": "tsc"
   },
