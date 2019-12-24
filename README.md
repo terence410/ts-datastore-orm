@@ -63,7 +63,7 @@ async function main() {
 ```typescript
 import {BaseEntity, Batcher, Column, datastoreOrm, Entity, Transaction, DatastoreOrmDatastoreError, DatastoreOrmError} from "ts-datastore-orm";
 
-@Entity({namespace: "testing", kind: "user"})
+@Entity({namespace: "testing", kind: "user", compositeIndexes: [{id: "desc"}, {string: "asc", ["object.name"]: "asc"}]})
 export class User extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -182,6 +182,9 @@ async function eventExamples() {
 async function operationExamples() {
     await User.truncate();
     const [ids] = await User.allocateIds(1);
+    
+    // generate composite index
+    await datastoreOrm.exportCompositeIndexes("./index.yaml");
 }
 
 async function keyExamples() {

@@ -127,7 +127,11 @@ export class Query<T extends typeof BaseEntity> {
     }
 
     public order<K extends IArgvColumn<InstanceType<T>>>(column: K, orderOptions?: IOrderOptions) {
-        this._query.order(column as string, orderOptions);
+        if (column === "id") {
+            this._query.order("__key__", orderOptions);
+        } else {
+            this._query.order(column as string, orderOptions);
+        }
         return this;
     }
 

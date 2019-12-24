@@ -1,6 +1,8 @@
 # Created by .ignore support plugin (hsz.mobi)
-tests
-build/performance
-prepareTest.ts
-src
 .idea
+src
+build/performance
+tests
+tslint.json
+.travis.yml
+index.yaml

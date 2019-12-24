@@ -13,6 +13,7 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
             kind: "",
             ancestors: [],
             excludeFromIndexes: [],
+            compositeIndexes: [],
         };
         newEntityMeta = Object.assign(newEntityMeta, entityMeta);
 
@@ -53,7 +54,10 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         const excludeFromIndexes: string[] = [];
         for (const [column, entityColumn] of Object.entries(entityColumns)) {
             if (!entityColumn.index) {
-                excludeFromIndexes.push(column);
+                // we don't have to exclude id, it's always indexed in ASC
+                if (column !== "id") {
+                    excludeFromIndexes.push(column);
+                }
 
             } else if (entityColumn.excludeFromIndexes.length) {
                 for (const subColumn of entityColumn.excludeFromIndexes ) {

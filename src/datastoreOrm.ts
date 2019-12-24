@@ -1,6 +1,8 @@
 // https://cloud.google.com/datastore/docs/concepts/stats
+// https://cloud.google.com/datastore/docs/tools/indexconfig#Datastore_Updating_indexes
 
 import * as Datastore from "@google-cloud/datastore";
+import * as fs from "fs";
 import {configLoader} from "./configLoader";
 import {namespaceStats} from "./enums/namespaceStats";
 import {stats} from "./enums/stats";
@@ -76,6 +78,35 @@ class DatastoreOrm {
         }
 
         return key;
+    }
+
+    public exportCompositeIndexes(filename: string) {
+        let yaml = "indexes:\n";
+        for (const entityMeta of this._entityMetas.values()) {
+            if (entityMeta.compositeIndexes.length) {
+                for (const compositeIndex of entityMeta.compositeIndexes) {
+                    yaml += "\n";
+                    yaml += `  - kind: ${entityMeta.kind}\n`;
+                    if (entityMeta.ancestors.length) {
+                        yaml += `    ancestor: yes\n`;
+                    } else {
+                        yaml += `    ancestor: no\n`;
+                    }
+
+                    yaml += `    properties:\n`;
+                    for (let [column, direction] of Object.entries(compositeIndex)) {
+                        if (column === "id") {
+                            column = "__key__";
+                        }
+
+                        yaml += `    - name: ${column}\n`;
+                        yaml += `      direction: ${direction}\n`;
+                    }
+                }
+            }
+        }
+
+        fs.writeFileSync(filename, yaml);
     }
 
     // endregion

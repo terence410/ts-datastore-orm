@@ -105,7 +105,7 @@ describe("Event Test", () => {
             events.on("create", entity => {
                 sequence.push("create");
                 resolve(entity);
-        });
+            });
         });
 
         const promise2 = new Promise(resolve => {

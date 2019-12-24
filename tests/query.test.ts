@@ -1,8 +1,10 @@
 import { assert, expect } from "chai";
-import {BaseEntity, Column, Entity} from "../src";
+import {BaseEntity, Column, datastoreOrm, Entity} from "../src";
 import {Batcher} from "../src/Batcher";
+import {IEntityCompositeIndexes} from "../src/types";
 
-@Entity({namespace: "testing", kind: "queryTest"})
+const compositeIndexes1: IEntityCompositeIndexes = [{id: "desc"}, {date1: "desc", string1: "asc"}, {string1: "asc", ["object1.string"]: "desc"}];
+@Entity({namespace: "testing", kind: "queryTest", compositeIndexes: compositeIndexes1})
 export class QueryTest extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -44,7 +46,8 @@ export class QueryTest extends BaseEntity {
     public objectArray1: Array<{string: string, value: number}> = [];
 }
 
-@Entity({namespace: "testing", kind: "queryTestChild", ancestors: [QueryTest, QueryTestChild]})
+const compositeIndexes2: IEntityCompositeIndexes = [{number: "desc", string: "desc"}];
+@Entity({namespace: "testing", kind: "queryTestChild", ancestors: [QueryTest, QueryTestChild], compositeIndexes: compositeIndexes2})
 export class QueryTestChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -57,6 +60,7 @@ export class QueryTestChild extends BaseEntity {
 }
 
 const total = 50;
+
 describe("Query Test", () => {
     it("truncate", async () => {
         await QueryTest.truncate();
@@ -299,5 +303,10 @@ describe("Query Test", () => {
             const sql = query.getSQL();
             assert.match(sql, /SELECT/);
         }
+    });
+
+    it("export composite index", async () => {
+        const filename = "./index.yaml";
+        datastoreOrm.exportCompositeIndexes(filename);
     });
 });

@@ -221,7 +221,7 @@ export class BaseEntity {
             // if this is not new or no auto generate id
             const entityColumn = datastoreOrm.getEntityColumn(this.constructor, "id");
             if (!this.isNew || !entityColumn.generateId) {
-                throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty.`);
+                throw new DatastoreOrmOperationError(`(${this.constructor.name}) This entity has no valid id nor auto generate id for saving. id must be non zero and non empty.`);
             }
             key = datastoreOrm.createKey({namespace: this._namespace, path: [this.constructor]});
         } else {
@@ -240,7 +240,7 @@ export class BaseEntity {
     // useful for delete
     public getKey(): IKey {
         if (!this._id) {
-            throw new DatastoreOrmOperationError(`(${this.constructor.name}) Please provide an id for this entity. id must be non zero and non empty.`);
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) This entity has no valid id for getKey() or serve as ancestor. id must be non zero and non empty.`);
         }
 
         const key = datastoreOrm.createKey({namespace: this._namespace, path: [this.constructor, this._id]});

@@ -72,10 +72,12 @@ export interface IEntityColumnBase {
 export interface IEntityColumn extends IEntityColumnBase {
     type: any;
 }
+export type IEntityCompositeIndexes = Array<{[key: string]: "asc" | "desc"}>;
 export interface IEntityMetaBase {
     namespace: string;
     kind: string;
     ancestors: object | object[];
+    compositeIndexes: IEntityCompositeIndexes;
 }
 export interface IEntityMeta extends  IEntityMetaBase {
     excludeFromIndexes: string[]; // for caching

@@ -7,6 +7,7 @@
 build
 package-lock.json
 datastoreServiceAccount.json
+index.yaml
 
 # User-specific stuff
 .idea/**/workspace.xml

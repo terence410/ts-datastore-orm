@@ -146,14 +146,14 @@ describe("Errors Test: Operations", () => {
             const child1 = ErrorTestChild.create();
             child1.setAncestor(entity1);
             await child1.save();
-        }, /Please provide an id for this entity/);
+        }, /This entity has no valid id nor auto generate id/);
     });
 
     it("Get key without id", async () => {
         await assertOperationError(async () => {
             const entity = ErrorTest.create();
             entity.getKey();
-        }, /Please provide an id for this entity/);
+        }, /This entity has no valid id for getKey()/);
     });
 
     it("Set an invalid id", async () => {
