@@ -47,7 +47,7 @@ export class QueryTest extends BaseEntity {
 }
 
 const compositeIndexes2: IEntityCompositeIndexes = [{number: "desc", string: "desc"}];
-@Entity({namespace: "testing", kind: "queryTestChild", ancestors: [QueryTest, QueryTestChild], compositeIndexes: compositeIndexes2})
+@Entity({namespace: "testing", kind: "queryTestChild", ancestor: QueryTest, compositeIndexes: compositeIndexes2})
 export class QueryTestChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -245,17 +245,12 @@ describe("Query Test", () => {
             .setAncestor(queryTest1)
             .save();
 
-        // ancestor of same type
-        const [queryTestChild2] = await new QueryTestChild()
-            .setAncestor(queryTestChild1)
-            .save();
-
         // query without ancestor
-        const [queryTestChild3] = await QueryTestChild
+        const [queryTestChild2] = await QueryTestChild
             .query()
             .filter("id", "=", queryTestChild1.id)
             .runOnce();
-        assert.isUndefined(queryTestChild3);
+        assert.isUndefined(queryTestChild2);
 
         // query with diff ancestor
         const [queryTestChild4] = await QueryTestChild
@@ -265,25 +260,11 @@ describe("Query Test", () => {
             .runOnce();
         assert.isDefined(queryTestChild4);
 
-        // query with same ancestor
-        const [queryTestChild5] = await QueryTestChild
-            .query()
-            .setAncestor(queryTestChild1)
-            .filter("id", "=", queryTestChild2.id)
-            .runOnce();
-        assert.isDefined(queryTestChild5);
-
         // get back the ancestor
         const [ancestor1] = await queryTestChild1.getAncestor();
         assert.isDefined(ancestor1);
         if (ancestor1) {
             assert.isTrue(ancestor1 instanceof QueryTest);
-        }
-
-        const [ancestor2] = await queryTestChild2.getAncestor();
-        assert.isDefined(ancestor2);
-        if (ancestor2) {
-            assert.isTrue(ancestor2 instanceof QueryTestChild);
         }
     });
 

@@ -76,12 +76,11 @@ export type IEntityCompositeIndexes = Array<{[key: string]: "asc" | "desc"}>;
 export interface IEntityMetaBase {
     namespace: string;
     kind: string;
-    ancestors: object | object[];
+    ancestor: object | null;
     compositeIndexes: IEntityCompositeIndexes;
 }
 export interface IEntityMeta extends  IEntityMetaBase {
     excludeFromIndexes: string[]; // for caching
-    ancestors: object[];
 }
 
 // endregion
@@ -164,8 +163,8 @@ export type IArgvAllocateIds = {
     total: number;
     namespace: string,
 };
-export type IArgvTruncate = {
-    namespace: string,
+export type IArgvNamespace = {
+    namespace?: string,
 };
 // endregion
 
@@ -177,10 +176,6 @@ export type ILockOptions = {
     delay: number;
     quickRelease: boolean;
     throwReleaseError: boolean;
-};
-
-export type IArgvResaveOptions = {
-    namespace: string,
 };
 
 // endregion

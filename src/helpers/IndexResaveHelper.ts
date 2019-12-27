@@ -1,7 +1,7 @@
 import {DatastoreOrmDatastoreError, DatastoreOrmOperationError} from "..";
 import {BaseEntity} from "../BaseEntity";
 import {datastoreOrm} from "../datastoreOrm";
-import {IArgvColumns, IArgvResaveOptions, IRequestResponse} from "../types";
+import {IArgvColumns, IArgvNamespace, IRequestResponse} from "../types";
 import {PerformanceHelper} from "./PerformanceHelper";
 
 export class IndexResaveHelper<T extends typeof BaseEntity> {
@@ -9,7 +9,7 @@ export class IndexResaveHelper<T extends typeof BaseEntity> {
 
     }
 
-    public async resave(columns: IArgvColumns<InstanceType<T>>, argv?: IArgvResaveOptions): Promise<[number, IRequestResponse]> {
+    public async resave(columns: IArgvColumns<InstanceType<T>>, options: IArgvNamespace = {}): Promise<[number, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         for (const column of columns) {
@@ -21,7 +21,7 @@ export class IndexResaveHelper<T extends typeof BaseEntity> {
 
         const batch = 500;
         const query = this.entityType.query().limit(batch);
-        const namespace = argv ? argv.namespace : "";
+        const namespace = options.namespace || "";
 
         // set namespace if we have
         if (namespace) {

@@ -21,7 +21,7 @@ export class Helper extends BaseEntity {
     public total2: number = 0;
 }
 
-@Entity({namespace: "testing", kind: "helperChild", ancestors: Helper})
+@Entity({namespace: "testing", kind: "helperChild", ancestor: Helper})
 export class HelperChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;

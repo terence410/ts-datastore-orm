@@ -436,7 +436,3 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://cloud.google.com/datastore/docs/
 - https://www.npmjs.com/package/@google-cloud/datastore
 - https://www.npmjs.com/package/@google-cloud/firestore
-
-# To-do
-- group stats query from datastoreOrm
-- helper to resave all items again to update index

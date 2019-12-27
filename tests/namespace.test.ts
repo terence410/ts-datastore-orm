@@ -10,7 +10,7 @@ export class Namespace extends BaseEntity {
     public total: number = 0;
 }
 
-@Entity({namespace: "testing", kind: "namespaceChild", ancestors: Namespace})
+@Entity({namespace: "testing", kind: "namespaceChild", ancestor: Namespace})
 export class NamespaceChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;

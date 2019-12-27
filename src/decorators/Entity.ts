@@ -11,7 +11,7 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         let newEntityMeta: IEntityMeta = {
             namespace: config.namespace,
             kind: "",
-            ancestors: [],
+            ancestor: null,
             excludeFromIndexes: [],
             compositeIndexes: [],
         };
@@ -68,8 +68,6 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
 
         // update the meta
         newEntityMeta.excludeFromIndexes = excludeFromIndexes;
-        newEntityMeta.ancestors = Array.isArray(entityMeta.ancestors) ? entityMeta.ancestors :
-            (entityMeta.ancestors ? [entityMeta.ancestors] : []);
         datastoreOrm.addEntity(target, newEntityMeta);
     };
 }

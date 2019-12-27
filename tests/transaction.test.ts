@@ -16,7 +16,7 @@ export class TransactionTest extends BaseEntity {
     public name: string = "";
 }
 
-@Entity({namespace: "testing", kind: "transactionTestChild", ancestors: TransactionTest})
+@Entity({namespace: "testing", kind: "transactionTestChild", ancestor: TransactionTest})
 export class TransactionTestChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;

@@ -1,10 +1,10 @@
 import { assert, expect } from "chai";
 import {
     Batcher,
-    datastoreOrm,
     DatastoreOrmDatastoreError,
     DatastoreOrmDecoratorError,
-    DatastoreOrmOperationError, Transaction
+    DatastoreOrmOperationError,
+    Transaction,
 } from "../src";
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
@@ -22,7 +22,7 @@ class ErrorTest extends BaseEntity {
     public string: string = "";
 }
 
-@Entity({kind: "errorTestChild", ancestors: [ErrorTest]})
+@Entity({kind: "errorTestChild", ancestor: ErrorTest})
 class ErrorTestChild extends BaseEntity {
     @Column()
     public id: number = 0;

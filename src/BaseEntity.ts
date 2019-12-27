@@ -9,7 +9,7 @@ import {Query} from "./Query";
 import {
     IArgvAllocateIds,
     IArgvColumn, IArgvFind, IArgvFindMany,
-    IArgvId, IArgvTruncate,
+    IArgvId, IArgvNamespace,
     IArgvValue,
     IArgvValues,
     IEntityData, IEvents,
@@ -123,10 +123,10 @@ export class BaseEntity {
         }
     }
 
-    public static async truncate<T extends typeof BaseEntity>(this: T, argv?: IArgvTruncate): Promise<[number, IRequestResponse]> {
+    public static async truncate<T extends typeof BaseEntity>(this: T, options: IArgvNamespace = {}): Promise<[number, IRequestResponse]> {
         const batch = 500;
         const query = this.query().selectKey().limit(batch);
-        const namespace = argv ? argv.namespace : "";
+        const namespace = options.namespace || "";
 
         // set namespace if we have
         if (namespace) {
@@ -430,33 +430,30 @@ export class BaseEntity {
             }
 
             // if we don't need any ancestors
-            if (entityMeta.ancestors.length === 0) {
+            if (!entityMeta.ancestor) {
                 let errorMessage = `(${(target as any).name}) Entity does not require any ancestor, `;
                 errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
                 throw new DatastoreOrmOperationError(errorMessage);
             }
 
             let isValid = false;
-            for (const ancestor of entityMeta.ancestors) {
-                const ancestorEntityMeta = datastoreOrm.getEntityMeta(ancestor);
-                if (ancestorEntityMeta.kind === ancestorKey.kind) {
-                    isValid = true;
-                    break;
-                }
+            const ancestorEntityMeta = datastoreOrm.getEntityMeta(entityMeta.ancestor);
+            if (ancestorEntityMeta.kind === ancestorKey.kind) {
+                isValid = true;
             }
 
             // check if ancestor is valid in schema
             if (!isValid) {
-                const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
-                let errorMessage = `(${(target as any).name}) Entity requires ancestors of (${names}), `;
+                const name = (entityMeta.ancestor as any).name;
+                let errorMessage = `(${(target as any).name}) Entity requires ancestors of (${name}), `;
                 errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
                 throw new DatastoreOrmOperationError(errorMessage);
             }
         } else {
             // if we need ancestors while not exist
-            if (entityMeta.ancestors.length) {
-                const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
-                throw new DatastoreOrmOperationError(`(${(target as any).name}) Entity requires ancestors of (${names}).`);
+            if (entityMeta.ancestor) {
+                const name = (entityMeta.ancestor as any).name;
+                throw new DatastoreOrmOperationError(`(${(target as any).name}) Entity requires ancestors of (${name}).`);
             }
         }
     }
