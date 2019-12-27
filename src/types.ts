@@ -137,6 +137,7 @@ export interface IEvents<T> {
 export type IArgvId = string | number;
 export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]: T[P]};
 export type IArgvColumn<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntity>;
+export type IArgvColumns<T extends BaseEntity> = Array<Exclude<keyof T, keyof BaseEntity>>;
 export type IArgvValue<T extends BaseEntity, K extends keyof IArgvValues<T>> = IArgvValues<T>[K];
 export type ITransactionOptions = {
     quickRollback: boolean;
@@ -176,6 +177,10 @@ export type ILockOptions = {
     delay: number;
     quickRelease: boolean;
     throwReleaseError: boolean;
+};
+
+export type IArgvResaveOptions = {
+    namespace: string,
 };
 
 // endregion

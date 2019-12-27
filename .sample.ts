@@ -8,7 +8,7 @@ import {
     DatastoreOrmError, DatastoreOrmLockError, DatastoreOrmOperationError,
     DescendentHelper,
     Entity,
-    IncrementHelper,
+    IncrementHelper, IndexResaveHelper,
     Transaction,
 } from "./src/index";
 
@@ -131,7 +131,7 @@ async function operationExamples() {
     const [ids] = await User.allocateIds(1);
 
     // generate composite index
-    await datastoreOrm.exportCompositeIndexes("./index.yaml");
+    await datastoreOrm.exportCompositeIndexes("./index.yaml", [User]);
 }
 
 async function keyExamples() {
@@ -277,6 +277,11 @@ async function incrementHelperExamples() {
     const incrementHelper = new IncrementHelper(user1);
     const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
     const latestValue = user1.number;
+}
+
+async function indexResaveHelperExamples() {
+    const indexResaveHelper = new IndexResaveHelper(User);
+    const [totalResaved] = await indexResaveHelper.resave(["number"]);
 }
 
 async function lockHelperExamples() {

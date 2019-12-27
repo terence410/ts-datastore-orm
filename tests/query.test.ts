@@ -307,6 +307,6 @@ describe("Query Test", () => {
 
     it("export composite index", async () => {
         const filename = "./index.yaml";
-        datastoreOrm.exportCompositeIndexes(filename);
+        datastoreOrm.exportCompositeIndexes(filename, [QueryTest, QueryTestChild]);
     });
 });

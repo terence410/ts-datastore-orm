@@ -169,7 +169,6 @@ describe("Errors Test: Operations", () => {
             const [entity1] = await ErrorTest.create().save();
             const entity2 = ErrorTest.create();
             entity2.setAncestor(entity1);
-            await entity2.save();
         }, /Entity does not require any ancestor/);
     });
 
@@ -199,6 +198,16 @@ describe("Errors Test: Operations", () => {
             const [entity2] = await ErrorTest.create().save();
             entity2.id = 1;
         }, /You cannot update id of an existing entity. id \(.*\)/);
+    });
+
+    it("Update ancestor", async () => {
+        const [entity1] = await ErrorTest.create().save();
+        const [entity2] = await ErrorTest.create().save();
+        const entityChild1 = ErrorTestChild.create().setAncestor(entity1);
+
+        await assertOperationError(async () => {
+            entityChild1.setAncestor(entity2);
+        }, /You cannot update ancestor once it is set./);
     });
 
     it("Update id after save", async () => {

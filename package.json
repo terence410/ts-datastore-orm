@@ -13,6 +13,7 @@
     "test-performance": "mocha --exit --timeout 20000 -r ts-node/register tests/performance.test.ts",
     "test-helpers": "mocha --exit --timeout 20000 -r ts-node/register tests/helpers.test.ts",
     "test-lockHelper": "mocha --exit --timeout 20000 -r ts-node/register tests/helpers/lockHelper.test.ts",
+    "test-indexResaveHelper": "mocha --exit --timeout 20000 -r ts-node/register tests/helpers/indexResaveHelper.test.ts",
     "test-transaction": "mocha --exit --timeout 20000 -r ts-node/register tests/transaction.test.ts",
     "test-subclass": "mocha --exit --timeout 20000 -r ts-node/register tests/subclass.test.ts",
     "test-events": "mocha --exit --timeout 20000 -r ts-node/register tests/events.test.ts",

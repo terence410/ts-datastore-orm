@@ -3,6 +3,7 @@
 
 import * as Datastore from "@google-cloud/datastore";
 import * as fs from "fs";
+import {BaseEntity} from "./BaseEntity";
 import {configLoader} from "./configLoader";
 import {namespaceStats} from "./enums/namespaceStats";
 import {stats} from "./enums/stats";
@@ -80,9 +81,10 @@ class DatastoreOrm {
         return key;
     }
 
-    public exportCompositeIndexes(filename: string) {
+    public exportCompositeIndexes<T extends typeof BaseEntity>(filename: string, entityTypes: T[]) {
         let yaml = "indexes:\n";
-        for (const entityMeta of this._entityMetas.values()) {
+        for (const entityType of entityTypes) {
+            const entityMeta = this.getEntityMeta(entityType);
             if (entityMeta.compositeIndexes.length) {
                 for (const compositeIndex of entityMeta.compositeIndexes) {
                     yaml += "\n";

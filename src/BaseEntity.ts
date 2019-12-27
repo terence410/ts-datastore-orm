@@ -213,7 +213,7 @@ export class BaseEntity {
     // this will validate the ancestor
     /** @internal */
     public getSaveDataKey(): IKey {
-        this._validateAncestorKey();
+        this._validateAncestorKey(this._ancestorKey);
 
         // get the key
         let key: IKey;
@@ -272,12 +272,10 @@ export class BaseEntity {
         return values as IArgvValues<T>;
     }
 
-    /** @deprecated */
     public set<T extends BaseEntity, K extends IArgvColumn<T>>(this: T, column: K, value: IArgvValue<T, K>) {
         return this._set(column as string, value);
     }
 
-    /** @deprecated */
     public get<T extends BaseEntity, K extends IArgvColumn<T>>(this: T, column: K): IArgvValue<T, K> {
         return this._get(column as string);
     }
@@ -286,9 +284,11 @@ export class BaseEntity {
     public setAncestor<R extends BaseEntity>(ancestor: R) {
         const ancestorKey = ancestor.getKey();
 
-        // check namespace
-        if (ancestorKey.namespace !== this._namespace) {
-            throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the entity namespace (${this._namespace}). `);
+        // validate the ancestor
+        this._validateAncestorKey(ancestorKey);
+
+        if (this._ancestorKey) {
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot update ancestor once it is set.`);
         }
 
         this._ancestorKey = ancestorKey;
@@ -321,7 +321,6 @@ export class BaseEntity {
 
         // friendly error
         const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-
         try {
             // update isNew = false no matter what
             if (this.isNew) {
@@ -419,38 +418,45 @@ export class BaseEntity {
     // region private methods
 
     /** @internal */
-    private _validateAncestorKey() {
+    private _validateAncestorKey(ancestorKey: IKey | undefined) {
         const target = this.constructor;
         const entityMeta = datastoreOrm.getEntityMeta(target);
-        // if we need ancestor
-        if (entityMeta.ancestors.length) {
-            if (!this._ancestorKey) {
-                const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
-                throw new DatastoreOrmOperationError(`(${(target as any).name}) Entity requires ancestors of (${names}).`);
 
-            } else {
-                let isValid = false;
-                for (const ancestor of entityMeta.ancestors) {
-                    const ancestorEntityMeta = datastoreOrm.getEntityMeta(ancestor);
-                    if (ancestorEntityMeta.kind === this._ancestorKey.kind) {
-                        isValid = true;
-                        break;
-                    }
-                }
+        // if we have a key
+        if (ancestorKey) {
+            // check namespace
+            if (ancestorKey.namespace !== this._namespace) {
+                throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the entity namespace (${this._namespace}).`);
+            }
 
-                if (!isValid) {
-                    const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
-                    let errorMessage = `(${(target as any).name}) Entity requires ancestors of (${names}), `;
-                    errorMessage += `but the current ancestor kind is (${this._ancestorKey.kind}).`;
-                    throw new DatastoreOrmOperationError(errorMessage);
+            // if we don't need any ancestors
+            if (entityMeta.ancestors.length === 0) {
+                let errorMessage = `(${(target as any).name}) Entity does not require any ancestor, `;
+                errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
+                throw new DatastoreOrmOperationError(errorMessage);
+            }
+
+            let isValid = false;
+            for (const ancestor of entityMeta.ancestors) {
+                const ancestorEntityMeta = datastoreOrm.getEntityMeta(ancestor);
+                if (ancestorEntityMeta.kind === ancestorKey.kind) {
+                    isValid = true;
+                    break;
                 }
             }
-        } else {
-            // if we don't have ancestor, but an ancestor key is provided
-            if (this._ancestorKey) {
-                let errorMessage = `(${(target as any).name}) Entity does not require any ancestor, `;
-                errorMessage += `but the current ancestor kind is (${this._ancestorKey.kind}).`;
+
+            // check if ancestor is valid in schema
+            if (!isValid) {
+                const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
+                let errorMessage = `(${(target as any).name}) Entity requires ancestors of (${names}), `;
+                errorMessage += `but the current ancestor kind is (${ancestorKey.kind}).`;
                 throw new DatastoreOrmOperationError(errorMessage);
+            }
+        } else {
+            // if we need ancestors while not exist
+            if (entityMeta.ancestors.length) {
+                const names = entityMeta.ancestors.map(x => (x as any).name).join(", ");
+                throw new DatastoreOrmOperationError(`(${(target as any).name}) Entity requires ancestors of (${names}).`);
             }
         }
     }

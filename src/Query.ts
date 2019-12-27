@@ -9,7 +9,7 @@ import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Transaction} from "./Transaction";
 import {
-    IArgvColumn,
+    IArgvColumn, IArgvColumns,
     IArgvValue,
     IKey,
     IOperator,
@@ -23,7 +23,7 @@ type IQueryOrder = {column: string, orderOptions?: IOrderOptions};
 export class Query<T extends typeof BaseEntity> {
     private _lastRunQueryInfo: DatastoreQuery.RunQueryInfo | undefined;
     private _ancestor: IKey | undefined;
-    private _selectKey: boolean = false;
+    private _isReadOnly: boolean = false;
     private _namespace = "";
     private _query: DatastoreQuery.Query;
 
@@ -53,7 +53,7 @@ export class Query<T extends typeof BaseEntity> {
 
     public selectKey() {
         this._query.select("__key__");
-        this._selectKey = true;
+        this._isReadOnly = true;
         return this;
     }
 
@@ -158,7 +158,7 @@ export class Query<T extends typeof BaseEntity> {
             this._lastRunQueryInfo = queryInfo;
 
             for (const entityData of results) {
-                const entity = this.entityType.newFromEntityData(entityData, this._selectKey);
+                const entity = this.entityType.newFromEntityData(entityData, this._isReadOnly);
                 entities.push(entity);
             }
 
@@ -189,7 +189,7 @@ export class Query<T extends typeof BaseEntity> {
         // start stream
         const stream = this._query.runStream();
         stream.on("data", entityData => {
-            const entity = this.entityType.newFromEntityData(entityData, this._selectKey);
+            const entity = this.entityType.newFromEntityData(entityData, this._isReadOnly);
             streamEvent.emit("data", entity);
         });
 

@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {IConfig} from "./types";
+import {readJsonFile} from "./utils";
 
 class ConfigLoader {
     private _initialized = false;
@@ -9,15 +10,23 @@ class ConfigLoader {
 
     public getConfig() {
         if (!this._initialized) {
-            const file = this._getConfigFile();
-            const rawData = fs.readFileSync(file);
+            const filename = this._getConfigFile();
+            let config!: IConfig;
             try {
-                const config = JSON.parse(rawData.toString()) as IConfig;
-                this._config = Object.assign(this._config, config);
-                this._initialized = true;
+                config = readJsonFile(filename) as IConfig;
             } catch (err) {
-                throw new DatastoreOrmOperationError(`Config file (${file}) is found, but it could not be parsed into json.`);
+                throw new DatastoreOrmOperationError(`Datastrom Orm config (${filename}) is not found or it could not be parsed into json.`);
             }
+
+            // read the key file and see any problem
+            try {
+                const keyFile = readJsonFile(config.keyFilename);
+            } catch (err) {
+                throw new DatastoreOrmOperationError(`KeyFilename (${config.keyFilename}) in config (${filename}) is not found or it could not be parsed into json.`);
+            }
+
+            this._config = Object.assign(this._config, config);
+            this._initialized = true;
         }
 
         return this._config;

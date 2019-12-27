@@ -1,6 +1,7 @@
 import {BaseEntity} from "./BaseEntity";
 import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
+import {datastoreStats} from "./datastoreStats";
 import {Column} from "./decorators/Column";
 import {Entity} from "./decorators/Entity";
 import {errorCodes} from "./enums/errorCodes";
@@ -13,6 +14,7 @@ import {DatastoreOrmLockError} from "./errors/DatastoreOrmLockError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {DescendentHelper} from "./helpers/DescendentHelper";
 import {IncrementHelper} from "./helpers/IncrementHelper";
+import {IndexResaveHelper} from "./helpers/IndexResaveHelper";
 import {LockHelper} from "./helpers/LockHelper";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
@@ -28,13 +30,15 @@ export {
     Column,
     Entity,
     datastoreOrm,
-
+    datastoreStats,
+    
     // Helpers
     IncrementHelper,
     DescendentHelper,
     LockHelper,
     PerformanceHelper,
-
+    IndexResaveHelper,
+    
     // errors
     DatastoreOrmDecoratorError,
     DatastoreOrmOperationError,

@@ -184,7 +184,7 @@ async function operationExamples() {
     const [ids] = await User.allocateIds(1);
     
     // generate composite index
-    await datastoreOrm.exportCompositeIndexes("./index.yaml");
+    await datastoreOrm.exportCompositeIndexes("./index.yaml", [User]);
 }
 
 async function keyExamples() {
@@ -357,6 +357,17 @@ async function incrementHelperExamples() {
 }
 ```
 
+# IncrementHelper
+Quick way to help you to create index for some newly added column. This Helper is not suggested to use for frequently updated data as it may cause atomic issue
+```typescript
+import {IndexResaveHelper} from "ts-datastore-orm";
+
+async function indexResaveHelperExamples() {
+    const indexResaveHelper = new IndexResaveHelper(User);
+    const [totalResaved] = await indexResaveHelper.resave(["number"]);
+}
+```
+
 # LockHelper
 A simple and robust locking helper for distributed servers. Useful for small to medium server. 
 If you have performance considering, please use some other tools like [Redis Lock](https://redis.io/topics/distlock). 
@@ -418,6 +429,7 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 | Admin | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/admin.test.ts) |
 | Helpers | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers.test.ts) |
 | LockHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/lockHelper.test.ts) |
+| IndexResaveHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/indexResaveHelper.test.ts) |
 
 # Useful links
 - https://googleapis.dev/nodejs/datastore/5.0.0/index.html
@@ -426,4 +438,5 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://www.npmjs.com/package/@google-cloud/firestore
 
 # To-do
-- able to generate/deploy composite config
+- group stats query from datastoreOrm
+- helper to resave all items again to update index
