@@ -6,12 +6,6 @@ jobs:
   include:
     - stage: testing
       if: branch in (develop)
-      script:
-        - npm install codecov -g
-        - npm run test:all
-      after_success1:
-        - mkdir coverage; nyc report --reporter=json; mv coverage/coverage-final.json coverage/coverage.json
-        - codecov
     - stage: npm release
       if: branch = master AND commit_message =~ /^[0-9]*\.[0-9]*\.[0-9]*$/
       before_deploy:

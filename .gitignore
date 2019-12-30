@@ -8,6 +8,7 @@ build
 package-lock.json
 datastoreServiceAccount.json
 index.yaml
+coverage.bat
 
 # User-specific stuff
 .idea/**/workspace.xml

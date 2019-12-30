@@ -42,7 +42,7 @@ export class User extends BaseEntity {
     public null: null = null;
 }
 
-@Entity({namespace: "testing", kind: "taskGroup", ancestors: User})
+@Entity({namespace: "testing", kind: "taskGroup", ancestor: User})
 export class TaskGroup extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
