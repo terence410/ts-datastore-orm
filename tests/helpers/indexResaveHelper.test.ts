@@ -12,6 +12,9 @@ export class IndexResave extends BaseEntity {
 
     @Column()
     public value: number = 0;
+
+    @Column()
+    public check: number = 0;
 }
 
 const total = 10;
@@ -25,6 +28,7 @@ describe("Index Resave Helper Test", () => {
             await IndexResave.create({
                 name: Math.random().toString(),
                 value: Math.random(),
+                check: i + 1,
             }).save();
         }
     });
@@ -53,5 +57,12 @@ describe("Index Resave Helper Test", () => {
 
         const [results2] = await IndexResave.query().filter("value", ">", 0).run();
         assert.equal(results2.length, totalResaved);
+
+        // make sure other values are not reset
+        const [all] = await IndexResave.query().run();
+        assert.equal(all.length, total);
+        for (const item of all) {
+            assert.notEqual(item.check, 0);
+        }
     });
 });

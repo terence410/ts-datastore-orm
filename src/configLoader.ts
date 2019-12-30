@@ -25,7 +25,7 @@ class ConfigLoader {
             if (process.env.testingProjectId && process.env.testingClientEmail && process.env.testingPrivateKey) {
                 this._config.projectId = process.env.testingProjectId;
                 this._config.clientEmail = process.env.testingClientEmail;
-                this._config.privateKey = process.env.testingPrivateKey;
+                this._config.privateKey = (process.env.testingPrivateKey || "").replace(/\\n/g, "\n");
             } else {
                 // read the key file and see any problem
                 try {

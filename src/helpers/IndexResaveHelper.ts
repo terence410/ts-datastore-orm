@@ -52,7 +52,7 @@ export class IndexResaveHelper<T extends typeof BaseEntity> {
 
             // update the only selected columns
             try {
-                await datastore.update(updateDataList);
+                await datastore.merge(updateDataList);
             } catch (err) {
                 const error = new DatastoreOrmDatastoreError(`(IndexResaveHelper, ${this.entityType.name}) Datastore update error. Error: ${err.message}.`,
                     err.code,
