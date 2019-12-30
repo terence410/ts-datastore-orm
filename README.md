@@ -1,6 +1,7 @@
 # Datastore ORM (Typescript)
 
-[![NPM version](https://badge.fury.io/js/ts-datastore-orm.png)](https://www.npmjs.com/package/ts-datastore-orm)
+[![codecov](https://img.shields.io/codecov/c/github/terence410/ts-datastore-orm/develop.svg?style=flat)](https://codecov.io/gh/terence410/ts-datastore-orm/branch/develop)
+[![NPM version](https://img.shields.io/npm/v/ts-datastore-orm.svg)](https://www.npmjs.com/package/ts-datastore-orm)
 
 [ts-datastore-orm](https://www.npmjs.com/package/ts-datastore-orm) targets to provide a strong typed and structural ORM feature for Datastore (Firestore in Datastore mode).
 
@@ -93,7 +94,7 @@ export class User extends BaseEntity {
     public null: null = null;
 }
 
-@Entity({namespace: "testing", kind: "taskGroup", ancestors: User})
+@Entity({namespace: "testing", kind: "taskGroup", ancestor: User})
 export class TaskGroup extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
