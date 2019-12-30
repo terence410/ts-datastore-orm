@@ -21,7 +21,7 @@ export class NamespaceChild extends BaseEntity {
 
 const newNamespace = "testing1";
 
-describe("Default Test", () => {
+describe("Namespace Test", () => {
     it("truncate", async () => {
         await Namespace.truncate();
         await Namespace.truncate({namespace: newNamespace});

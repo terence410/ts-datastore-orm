@@ -8,8 +8,8 @@ jobs:
       if: branch in (develop)
       script:
         - npm install codecov -g
-        - npm run test
-      after_success:
+        - npm run test:all
+      after_success1:
         - mkdir coverage; nyc report --reporter=json; mv coverage/coverage-final.json coverage/coverage.json
         - codecov
     - stage: npm release

@@ -59,7 +59,7 @@ const values = {
 const total = 1000;
 const batch = 1000;
 
-describe("Default Test", () => {
+describe("Performance Test", () => {
     it("truncate", async () => {
         await PerformanceTest1.truncate();
         await PerformanceTest2.truncate();
