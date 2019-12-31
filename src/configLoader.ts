@@ -6,7 +6,7 @@ import {readJsonFile} from "./utils";
 
 class ConfigLoader {
     private _initialized = false;
-    private _config: IConfig = {keyFilename: "", friendlyError: false, namespace: "", projectId: "", clientEmail: "", privateKey: ""};
+    private _config: IConfig = {keyFilename: "", friendlyError: false, namespace: ""};
 
     public getConfig() {
         if (!this._initialized) {
@@ -22,21 +22,12 @@ class ConfigLoader {
             this._config = Object.assign(this._config, config);
 
             // if we credientials from testing variable
-            if (process.env.testingProjectId && process.env.testingClientEmail && process.env.testingPrivateKey) {
-                this._config.projectId = process.env.testingProjectId;
-                this._config.clientEmail = process.env.testingClientEmail;
-                this._config.privateKey = (process.env.testingPrivateKey || "").replace(/\\n/g, "\n");
-            } else {
-                // read the key file and see any problem
-                try {
-                    const keyFile = readJsonFile(config.keyFilename);
-                    this._config.projectId = keyFile.project_id;
-                    this._config.clientEmail = keyFile.client_email;
-                    this._config.privateKey = keyFile.private_key;
 
-                } catch (err) {
-                    throw new DatastoreOrmOperationError(`KeyFilename (${config.keyFilename}) in config (${filename}) is not found or it could not be parsed into json.`);
-                }
+            // read the key file and see any problem
+            try {
+                const keyFile = readJsonFile(config.keyFilename);
+            } catch (err) {
+                throw new DatastoreOrmOperationError(`KeyFilename (${config.keyFilename}) in config (${filename}) is not found or it could not be parsed into json.`);
             }
 
             this._initialized = true;

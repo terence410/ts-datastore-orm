@@ -9,9 +9,6 @@ export type IConfig = {
     keyFilename: string;
     friendlyError: boolean;
     namespace: string;
-    projectId: string,
-    clientEmail: string;
-    privateKey: string;
 };
 
 // endregion

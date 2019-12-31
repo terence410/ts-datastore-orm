@@ -1,7 +1,18 @@
 # Datastore ORM (Typescript)
 
-[![codecov](https://img.shields.io/codecov/c/github/terence410/ts-datastore-orm/develop.svg?style=flat)](https://codecov.io/gh/terence410/ts-datastore-orm/branch/develop)
-[![NPM version](https://img.shields.io/npm/v/ts-datastore-orm.svg)](https://www.npmjs.com/package/ts-datastore-orm)
+[![NPM version][npm-image]][npm-url]
+[![build status][travis-image]][travis-url]
+[![Test coverage][codecov-image]][codecov-url]
+[![David deps][david-image]][david-url]
+
+[npm-image]: https://img.shields.io/npm/v/ts-datastore-orm.svg
+[npm-url]: https://npmjs.org/package/ts-datastoreorm
+[travis-image]: https://img.shields.io/travis/eggjs/egg.svg?style=flat-square
+[travis-url]: https://travis-ci.org/eggjs/egg
+[codecov-image]: https://img.shields.io/codecov/c/github/terence410/ts-datastore-orm.svg?style=flat-square
+[codecov-url]: https://codecov.io/gh/terence410/ts-datastore-orm
+[david-image]: https://img.shields.io/david/terence410/ts-datastore-orm.svg?style=flat-square
+[david-url]: https://david-dm.org/terence410/ts-datastore-orm
 
 [ts-datastore-orm](https://www.npmjs.com/package/ts-datastore-orm) targets to provide a strong typed and structural ORM feature for Datastore (Firestore in Datastore mode).
 
