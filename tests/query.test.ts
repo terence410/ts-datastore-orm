@@ -46,7 +46,7 @@ export class QueryTest extends BaseEntity {
     public objectArray1: Array<{string: string, value: number}> = [];
 }
 
-const compositeIndexes2: IEntityCompositeIndexes = [{number: "desc", string: "desc"}];
+const compositeIndexes2: IEntityCompositeIndexes = [{number: "desc", string: "desc", __ancestor__: false}, {number: "desc"}];
 @Entity({namespace: "testing", kind: "queryTestChild", ancestor: QueryTest, compositeIndexes: compositeIndexes2})
 export class QueryTestChild extends BaseEntity {
     @Column({generateId: true})

@@ -72,7 +72,7 @@ export interface IEntityColumnBase {
 export interface IEntityColumn extends IEntityColumnBase {
     type: any;
 }
-export type IEntityCompositeIndexes = Array<{[key: string]: "asc" | "desc"}>;
+export type IEntityCompositeIndexes = Array<{[key: string]: "asc" | "desc"} | {__ancestor__?: boolean}>;
 export interface IEntityMetaBase {
     namespace: string;
     kind: string;

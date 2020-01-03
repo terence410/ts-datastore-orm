@@ -89,7 +89,7 @@ class DatastoreOrm {
                 for (const compositeIndex of entityMeta.compositeIndexes) {
                     yaml += "\n";
                     yaml += `  - kind: ${entityMeta.kind}\n`;
-                    if (entityMeta.ancestor) {
+                    if (entityMeta.ancestor && (compositeIndex.__ancestor__ || compositeIndex.__ancestor__ === undefined)) {
                         yaml += `    ancestor: yes\n`;
                     } else {
                         yaml += `    ancestor: no\n`;
@@ -101,8 +101,10 @@ class DatastoreOrm {
                             column = "__key__";
                         }
 
-                        yaml += `    - name: ${column}\n`;
-                        yaml += `      direction: ${direction}\n`;
+                        if (column !== "__ancestor__") {
+                            yaml += `    - name: ${column}\n`;
+                            yaml += `      direction: ${direction}\n`;
+                        }
                     }
                 }
             }
