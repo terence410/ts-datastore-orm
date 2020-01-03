@@ -1,6 +1,6 @@
 {
   "name": "ts-datastore-orm",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "ts-datastore-orm targets to provide a strong typed and structural ORM feature for Datastore (Firestore in Datastore mode).",
   "main": "build/index.js",
   "types": "build/index.d.ts",
