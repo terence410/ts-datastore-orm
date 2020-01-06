@@ -425,8 +425,9 @@ export class BaseEntity {
         // if we have a key
         if (ancestorKey) {
             // check namespace
-            if (ancestorKey.namespace !== this._namespace) {
-                throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the entity namespace (${this._namespace}).`);
+            const ancestorNamespace = ancestorKey.namespace || "";
+            if (ancestorNamespace !== this._namespace) {
+                throw new DatastoreOrmOperationError(`(${this.constructor.name}) The ancestor namespace (${ancestorNamespace}) is different with the entity namespace (${this._namespace}).`);
             }
 
             // if we don't need any ancestors
