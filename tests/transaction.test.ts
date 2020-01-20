@@ -14,6 +14,12 @@ export class TransactionTest extends BaseEntity {
 
     @Column()
     public name: string = "";
+
+    @Column()
+    public value: number = 0;
+
+    @Column()
+    public date: Date = new Date();
 }
 
 @Entity({namespace: "testing", kind: "transactionTestChild", ancestor: TransactionTest})
@@ -39,7 +45,7 @@ describe("Transaction Test", () => {
         const [user2] = await TransactionTest.create({id: id2, name: "Terence"}).save();
 
         const [child1, transactionResponse] = await Transaction.execute(async transaction => {
-            let child2: TransactionTest | undefined;
+            let child2: TransactionTestChild | undefined;
             const [users1, requestResponse1] = await transaction.findMany(TransactionTest, [id1, id2]);
 
             if (users1.length > 1) {

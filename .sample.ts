@@ -73,8 +73,8 @@ async function batcherExamples() {
     const users = Array(10).fill(0).map((x, i) => {
         return User.create({number: i});
     });
-    const [total1, requestResponse1] = await batcher.saveMany(users);
-    const [total2, requestResponse2] = await batcher.deleteMany(users);
+    const [total1, requestResponse1] = await batcher.save(users);
+    const [total2, requestResponse2] = await batcher.delete(users);
 }
 
 async function ancestorExamples() {

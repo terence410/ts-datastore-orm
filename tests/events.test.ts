@@ -87,9 +87,9 @@ describe("Event Test", () => {
         });
 
         const entity1 = EventTest.create({name: "Create"});
-        await batcher.saveMany([entity1, existEntity2]);
+        await batcher.save([entity1, existEntity2]);
         sequence.push(1);
-        await batcher.deleteMany([entity1]);
+        await batcher.delete([entity1]);
         sequence.push(2);
         const results = await Promise.all([promise1, promise2, promise3]);
 

@@ -67,7 +67,7 @@ describe("General Test", () => {
     it("allocate ids", async () => {
         const [ids] = await User.allocateIds(10);
         const users = ids.map(id => User.create({id}));
-        await batcher.saveMany(users);
+        await batcher.save(users);
         users.forEach((user, i) => {
             assert.equal(user.id, ids[i]);
         });
@@ -101,6 +101,41 @@ describe("General Test", () => {
         assert.equal(entities1.length, ids.length);
         assert.equal(entities2.length, ids.length);
     });
+
+    it("merge value", async () => {
+        const date = new Date();
+        const values = {
+            number: 123,
+            date: new Date(),
+            string: "abc",
+            array: [1, 2, 3],
+            object: {a: 1, b: 2, c: 3},
+            buffer: Buffer.alloc(5),
+        };
+        const user = User.create(values);
+        await user.save();
+
+        // merge some values
+        const mergeObjects: Array<[string, any]> = [
+            ["date", new Date(123)],
+            ["number", 456],
+            ["string", "xyz"],
+            ["array", [4, 5, 6]],
+            ["object", {x: 4, y: 5, z: 6}],
+            ["buffer", Buffer.alloc(10)],
+        ];
+
+        for (const [key, value] of mergeObjects) {
+            const mergeValues = {[key]: value};
+            await user.merge(mergeValues);
+            assert.equal(user.get(key as any), value);
+
+            const [newUser] = await User.find(user.id);
+            if (newUser) {
+                assert.deepEqual(user.getValues(), newUser.getValues());
+            }
+        }
+    });
 });
 
 describe("General Test: Batcher", () => {
@@ -111,7 +146,7 @@ describe("General Test: Batcher", () => {
         });
 
         // insert
-        await batcher.saveMany(entities);
+        await batcher.save(entities);
         const [users1] = await User.findMany(entities.map(x => x.id));
         assert.equal(users1.length, total);
 
@@ -119,10 +154,10 @@ describe("General Test: Batcher", () => {
         entities.forEach(x => {
             x.number = Math.random();
         });
-        await batcher.saveMany(entities);
+        await batcher.save(entities);
 
         // delete
-        await batcher.deleteMany(entities);
+        await batcher.delete(entities);
         const [users2] = await User.findMany(entities.map(x => x.id));
         assert.equal(users2.length, 0);
     });

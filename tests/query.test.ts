@@ -89,7 +89,7 @@ describe("Query Test", () => {
             entities.push(entity);
         }
         const batcher = new Batcher();
-        await batcher.saveMany(entities);
+        await batcher.save(entities);
     });
 
     it("query: non index", async () => {

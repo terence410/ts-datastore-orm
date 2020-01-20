@@ -284,7 +284,7 @@ describe("Errors Test: Datastore", () => {
         await assertDatastoreError(async () => {
             const batcher = new Batcher();
             const entity1 = ErrorTest.create({id: -1}).setNamespace("not exist");
-            await batcher.saveMany([entity1]);
+            await batcher.save([entity1]);
         }, /Batcher Save Error for insert/);
     });
 
@@ -292,7 +292,7 @@ describe("Errors Test: Datastore", () => {
         await assertDatastoreError(async () => {
             const batcher = new Batcher();
             const entity1 = ErrorTest.create({id: -1}).setNamespace("not exist");
-            await batcher.deleteMany([entity1]);
+            await batcher.delete([entity1]);
         }, /Batcher Delete Error/);
     });
 

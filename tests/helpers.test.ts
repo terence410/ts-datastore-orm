@@ -68,7 +68,7 @@ describe("Helper Test: Increment", () => {
 
         const entities = Array(total).fill(0).map(x => Helper.create({total1: 0}));
         const batcher = new Batcher();
-        await batcher.saveMany(entities);
+        await batcher.save(entities);
 
         for (let i = 0; i < loop; i++) {
             const performanceHelper = new PerformanceHelper().start();

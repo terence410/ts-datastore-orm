@@ -11,7 +11,7 @@ export class Batcher {
         //
     }
 
-    public async saveMany<T extends BaseEntity>(entities: T[]): Promise<[number, IRequestResponse]> {
+    public async save(entities: BaseEntity[]): Promise<[number, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         const datastore = datastoreOrm.getDatastore();
@@ -86,7 +86,7 @@ export class Batcher {
         return [entities.length, performanceHelper.readResult()];
     }
 
-    public async deleteMany<T extends BaseEntity>(entities: T[]): Promise<[number, IRequestResponse]> {
+    public async delete(entities: BaseEntity[]): Promise<[number, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         // mass delete

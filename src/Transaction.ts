@@ -12,7 +12,8 @@ import {
     IArgvAllocateIds,
     IArgvFind,
     IArgvFindMany,
-    IArgvId, IKey,
+    IArgvId, IArgvValues,
+    IKey,
     IRequestResponse,
     ITransactionOptions,
     ITransactionResponse,
@@ -263,11 +264,11 @@ export class Transaction {
         }
     }
 
-    public save<T extends BaseEntity>(entity: T) {
-        this.saveMany([entity]);
-    }
+    public save<T extends BaseEntity>(entities: T | T[]) {
+        if (!Array.isArray(entities)) {
+            entities = [entities];
+        }
 
-    public saveMany<T extends BaseEntity>(entities: T[]) {
         const insertEntities = entities.filter(x => x.isNew);
         const updateEntities = entities.filter(x => !x.isNew);
 
@@ -292,11 +293,11 @@ export class Transaction {
         }
     }
 
-    public delete<T extends BaseEntity>(entity: T) {
-        this.deleteMany([entity]);
-    }
+    public delete<T extends BaseEntity>(entities: T | T[]) {
+        if (!Array.isArray(entities)) {
+            entities = [entities];
+        }
 
-    public deleteMany<T extends BaseEntity>(entities: T[]) {
         const keys = entities.map(x => x.getKey());
         this.datastoreTransaction.delete(keys);
 

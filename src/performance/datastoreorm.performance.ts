@@ -50,7 +50,7 @@ async function startWorker() {
             entity.date.setTime(entity.date.getTime() + j);
             return entity;
         });
-        await batcher.saveMany(entities);
+        await batcher.save(entities);
         total += createBatch;
     }
 }

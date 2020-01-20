@@ -449,6 +449,3 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://www.npmjs.com/package/@google-cloud/datastore
 - https://www.npmjs.com/package/@google-cloud/firestore
 
-# TO-DO
-- add merge
-- when getSQL(), when key is string, it need to be quoted

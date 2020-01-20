@@ -140,7 +140,7 @@ export class BaseEntity {
 
         while (query.hasNextPage()) {
             const [entities, requestResponse1] = await query.run();
-            const [_, batchResponse] = await batcher.deleteMany(entities);
+            const [_, batchResponse] = await batcher.delete(entities);
             total += entities.length;
             requestResponse.executionTime += requestResponse1.executionTime;
             requestResponse.executionTime += batchResponse.executionTime;
@@ -207,6 +207,15 @@ export class BaseEntity {
             key: this.getSaveDataKey(),
             excludeFromIndexes,
             data: this._data,
+        };
+    }
+
+    public getMergeData(data: object): IEntityData {
+        const excludeFromIndexes = datastoreOrm.getExcludeFromIndexes(this.constructor);
+        return {
+            key: this.getSaveDataKey(),
+            excludeFromIndexes,
+            data,
         };
     }
 
@@ -344,6 +353,48 @@ export class BaseEntity {
 
             }
         } catch (err) {
+            const error = new DatastoreOrmDatastoreError(`(${this.constructor.name}) Entity cannot be saved. id (${(this as any).id}). Error: ${err.message}.`,
+                err.code,
+                err);
+            if (friendlyErrorStack) {
+                error.stack = friendlyErrorStack;
+            }
+
+            throw error;
+        }
+
+        return [this, performanceHelper.readResult()];
+    }
+
+    public async merge<T extends BaseEntity>(this: T, values: Partial<IArgvValues<T>>): Promise<[T, IRequestResponse]> {
+        const performanceHelper = new PerformanceHelper().start();
+
+        if (this.isReadOnly) {
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) Entity is read only. id (${(this as any).id}).`);
+        }
+
+        if (this.isNew) {
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot call merge() on a new Entity..`);
+        }
+
+        // save
+        const datastore = datastoreOrm.getDatastore();
+        const mergeData = this.getMergeData(values);
+
+        // update the local data first
+        for (const [key, value] of Object.entries(values)) {
+            this._set(key, value);
+        }
+
+        // friendly error
+        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+        try {
+            // update isNew = false no matter what
+            const [updateResult] = await datastore.merge(mergeData);
+
+            // emit event
+            eventEmitters.emit("update", this);
+    } catch (err) {
             const error = new DatastoreOrmDatastoreError(`(${this.constructor.name}) Entity cannot be saved. id (${(this as any).id}). Error: ${err.message}.`,
                 err.code,
                 err);
