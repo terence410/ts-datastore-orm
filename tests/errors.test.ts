@@ -133,6 +133,20 @@ describe("Errors Test: Decorators", () => {
 });
 
 describe("Errors Test: Operations", () => {
+    it("Check passing empty array", async () => {
+        const [entities1] = await ErrorTest.findMany([]);
+        assert.isArray(entities1);
+
+        const [entities2] = await Transaction.execute(async transaction => {
+            const entities = transaction.findMany(ErrorTest, []);
+            return entities;
+        });
+        assert.isArray(entities2);
+
+        const batcher = new Batcher();
+        await batcher.save([]);
+    });
+
     it("Delete multiple times (valid)", async () => {
         const batcher = new Batcher();
         const [entity1] = await ErrorTest.create().save();

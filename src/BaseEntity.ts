@@ -61,33 +61,38 @@ export class BaseEntity {
             ids = argv.ids;
         }
 
-        // get the keys
-        const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [this, x]}));
-        const datastore = datastoreOrm.getDatastore();
+        if (ids.length) {
+            // get the keys
+            const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [this, x]}));
 
-        // friendly error
-        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-        try {
-            const [results] = await datastore.get(keys);
+            const datastore = datastoreOrm.getDatastore();
 
-            // convert into entities
-            let entities: any[] = [];
-            if (Array.isArray(results)) {
-                entities = results.map(x => this.newFromEntityData(x));
+            // friendly error
+            const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+            try {
+                const [results] = await datastore.get(keys);
+
+                // convert into entities
+                let entities: any[] = [];
+                if (Array.isArray(results)) {
+                    entities = results.map(x => this.newFromEntityData(x));
+                }
+
+                return [entities, performanceHelper.readResult()];
+
+            } catch (err) {
+                const error = new DatastoreOrmDatastoreError(`(${this.name}) Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
+                    err.code,
+                    err);
+                if (friendlyErrorStack) {
+                    error.stack = friendlyErrorStack;
+                }
+
+                throw error;
             }
-
-            return [entities, performanceHelper.readResult()];
-
-        } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${this.name}) Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
-                err.code,
-                err);
-            if (friendlyErrorStack) {
-                error.stack = friendlyErrorStack;
-            }
-
-            throw error;
         }
+
+        return [[], performanceHelper.readResult()];
     }
 
     public static async allocateIds<T extends typeof BaseEntity>(this: T, argv: number | IArgvAllocateIds): Promise<[number[], IRequestResponse]> {

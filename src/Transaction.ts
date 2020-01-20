@@ -236,32 +236,36 @@ export class Transaction {
             ids = argv.ids;
         }
 
-        // get the keys
-        const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]}));
-
         // friendly error
-        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-        try {
-            const [results] = await this.datastoreTransaction.get(keys);
+        if (ids.length) {
+            // get the keys
+            const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]}));
 
-            // convert into entities
-            let entities: any[] = [];
-            if (Array.isArray(results)) {
-                entities = results.map(x => entityType.newFromEntityData(x));
+            const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+            try {
+                const [results] = await this.datastoreTransaction.get(keys);
+
+                // convert into entities
+                let entities: any[] = [];
+                if (Array.isArray(results)) {
+                    entities = results.map(x => entityType.newFromEntityData(x));
+                }
+
+                return [entities, performanceHelper.readResult()];
+
+            } catch (err) {
+                const error = new DatastoreOrmDatastoreError(`(${entityType.name}) Transaction Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
+                    err.code,
+                    err);
+                if (friendlyErrorStack) {
+                    error.stack = friendlyErrorStack;
+                }
+
+                throw error;
             }
-
-            return [entities, performanceHelper.readResult()];
-
-        } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${entityType.name}) Transaction Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
-                err.code,
-                err);
-            if (friendlyErrorStack) {
-                error.stack = friendlyErrorStack;
-            }
-
-            throw error;
         }
+
+        return [[], performanceHelper.readResult()];
     }
 
     public save<T extends BaseEntity>(entities: T | T[]) {
