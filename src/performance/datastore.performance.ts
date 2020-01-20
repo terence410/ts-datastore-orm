@@ -1,7 +1,7 @@
 import * as Datastore from "@google-cloud/datastore";
 import cluster from "cluster";
 import {configLoader} from "../configLoader";
-import {getUsedMemory} from "../utils";
+import {getUsedMemoryInMb} from "../utils";
 
 // datastore
 const config = configLoader.getConfig();
@@ -39,7 +39,7 @@ async function startWorker() {
 function reportWorker() {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    console.log(`WorkerId: ${workerId}, Total created entity: ${total} in: ${diff / 1000}s, now: ${now}, memory: ${getUsedMemory()}MB`);
+    console.log(`WorkerId: ${workerId}, Total created entity: ${total} in: ${diff / 1000}s, now: ${now}, memory: ${getUsedMemoryInMb()}MB`);
     date = now;
     total = 0;
     setTimeout(reportWorker, reportDuration);

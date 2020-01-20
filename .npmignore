@@ -1,8 +1,9 @@
 # Created by .ignore support plugin (hsz.mobi)
 .idea
+.github
+node_modules
 src
 build/performance
 tests
 tslint.json
-.travis.yml
 index.yaml

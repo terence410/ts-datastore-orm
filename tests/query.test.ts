@@ -16,6 +16,9 @@ export class QueryTest extends BaseEntity {
     public date2: Date = new Date();
 
     @Column({index: true})
+    public nullableDate: Date | null = null;
+
+    @Column({index: true})
     public string1: string = "";
 
     @Column()
@@ -146,7 +149,7 @@ describe("Query Test", () => {
     it("query: array", async () => {
         const [entity] = await QueryTest.query()
             .filterAny("array1", "=", 1)
-            .filterAny("array1", "=", 2)
+            .filterAny("array1", 2)
             .runOnce();
         assert.isDefined(entity);
     });
@@ -154,7 +157,7 @@ describe("Query Test", () => {
     it("query: object", async () => {
         // object1.string is indexed
         const [entity1] = await QueryTest.query()
-            .filterAny("object1.value", "=", 0)
+            .filterAny("object1.value", 0)
             .runOnce();
         assert.isDefined(entity1);
 
@@ -168,7 +171,7 @@ describe("Query Test", () => {
 
         // object2.value is excluded from index
         const [entity3] = await QueryTest.query()
-            .filterAny("object2.value", "=", 0)
+            .filterAny("object2.value", 0)
             .runOnce();
         assert.isUndefined(entity3);
     });
@@ -176,7 +179,7 @@ describe("Query Test", () => {
     it("query: object array", async () => {
         // object1[].string is indexed
         const [entity1] = await QueryTest.query()
-            .filterAny("objectArray1.string", "=", "0")
+            .filterAny("objectArray1.string", "0")
             .runOnce();
         assert.isDefined(entity1);
         if (entity1) {
@@ -248,7 +251,7 @@ describe("Query Test", () => {
         // query without ancestor
         const [queryTestChild2] = await QueryTestChild
             .query()
-            .filter("id", "=", queryTestChild1.id)
+            .filter("id", queryTestChild1.id)
             .runOnce();
         assert.isUndefined(queryTestChild2);
 
@@ -268,13 +271,20 @@ describe("Query Test", () => {
         }
     });
 
+    it("query: sql 1", async () => {
+        const entity = QueryTest.create({nullableDate: null});
+        await entity.save();
+        const query = QueryTest.query().filter("nullableDate", null);
+        assert.equal(query.getSQL(), "SELECT * from `queryTest` WHERE nullableDate = null");
+    });
+
     it("query: sql", async () => {
         const [queryTestChild] = await QueryTestChild.query().runOnce();
 
         if (queryTestChild) {
             const [ancestor] = await queryTestChild.getAncestor();
             const query = QueryTestChild.query()
-                .filterKey("=", queryTestChild.getKey())
+                .filterKey(queryTestChild.getKey())
                 .setAncestor(ancestor as any)
                 .selectKey()
                 .groupByAny("string")
@@ -284,6 +294,12 @@ describe("Query Test", () => {
             const sql = query.getSQL();
             assert.match(sql, /SELECT/);
         }
+    });
+
+    it("query: sql", async () => {
+        const sql = QueryTestChild.query().filter("id", 1).getSQL();
+        assert.equal(sql,
+            "SELECT * from `queryTestChild` WHERE __key__ = Key(Namespace(\"testing\"), queryTestChild, 1)");
     });
 
     it("export composite index", async () => {

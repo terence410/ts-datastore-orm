@@ -97,26 +97,56 @@ export class Query<T extends typeof BaseEntity> {
         return this;
     }
 
-    public filterAny(column: string, operator: IOperator, value: any) {
+    public filterAny(column: string, value: any): this;
+    public filterAny(column: string, operator: IOperator, value: any): this;
+    public filterAny(column: string, ...args: any[]) {
+        // convert optional argument
+        let operator: IOperator = "=";
+        let value: any = args[0];
+        if (args.length > 1) {
+            operator = args[0];
+            value = args[1];
+        }
+
         this.filter(column as any, operator, value);
         return this;
     }
 
-    public filterKey(operator: IOperator, key: IKey) {
+    public filterKey(key: IKey): this;
+    public filterKey(operator: IOperator, key: IKey): this;
+    public filterKey(...args: any[]) {
+        // convert optional argument
+        let operator: IOperator = "=";
+        let key: IKey = args[0];
+        if (args.length > 1) {
+            operator = args[0];
+            key = args[1];
+        }
+
         this._query.filter("__key__", operator, key);
         return this;
     }
 
-    public filter<K extends IArgvColumn<InstanceType<T>>>(column: K, operator: IOperator, value: IArgvValue<InstanceType<T>, K>) {
+    public filter<K extends IArgvColumn<InstanceType<T>>>(column: K, value: IArgvValue<InstanceType<T>, K>): this;
+    public filter<K extends IArgvColumn<InstanceType<T>>>(column: K, operator: IOperator, value: IArgvValue<InstanceType<T>, K>): this;
+    public filter<K extends IArgvColumn<InstanceType<T>>>(column: K, ...args: any[]) {
+        // convert optional argument
+        let operator: IOperator = "=";
+        let value: any = args[0];
+        if (args.length > 1) {
+            operator = args[0];
+            value = args[1];
+        }
+
         if (column === "id") {
-            const key = datastoreOrm.createKey({namespace: this._namespace, path: [this.entityType, value as any]});
+            const key = datastoreOrm.createKey({namespace: this._namespace, path: [this.entityType, value]});
             if (this._ancestor) {
                 key.parent = this._ancestor;
             }
 
             this._query.filter("__key__", operator, key);
         } else {
-            this._query.filter(column as string, operator, value as any);
+            this._query.filter(column as string, operator, value);
         }
         return this;
     }
@@ -236,7 +266,18 @@ export class Query<T extends typeof BaseEntity> {
                 if (filter.val instanceof DatastoreEntity.entity.Key) {
                     const key = filter.val as DatastoreEntity.entity.Key;
                     const op = filter.op === "HAS_ANCESTOR" ? "HAS ANCESTOR" : filter.op;
-                    const keyName = `Key(Namespace("${this._namespace}"), ${key.path.join(", ")})`;
+
+                    const keyParams = [];
+                    for (let i = 0; i < key.path.length; i++ ) {
+                        const path = key.path[i];
+                        if (i % 2 === 0 || typeof path === "number") {
+                            keyParams.push(path);
+                        } else {
+                            keyParams.push(`"${path}"`);
+                        }
+                    }
+
+                    const keyName = `Key(Namespace("${this._namespace}"), ${keyParams.join(", ")})`;
                     wheres.push(`__key__ ${op} ${keyName}`);
 
                 } else if (typeof filter.val === "string") {
