@@ -1,5 +1,6 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Batcher} from "./Batcher";
+import {configLoader} from "./configLoader";
 import {datastoreOrm} from "./datastoreOrm";
 import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
@@ -13,12 +14,11 @@ import {
     IArgvValue,
     IArgvValues,
     IEntityData, IEvents,
-    IKey,
+    IKey, IPropType,
     IRequestResponse,
 } from "./types";
 
 export class BaseEntity {
-
     // region static methods
 
     public static create<T extends typeof BaseEntity>(this: T, values: Partial<IArgvValues<InstanceType<T>>> = {}): InstanceType<T> {
@@ -38,10 +38,10 @@ export class BaseEntity {
         let id: IArgvId = argv as IArgvId;
         let namespace: string | undefined;
         let ancestor: BaseEntity | undefined;
-        if (typeof argv === "object") {
-            namespace = argv.namespace;
-            ancestor = argv.ancestor;
-            id = argv.id;
+        if (typeof argv === "object" && argv.id) {
+            namespace = (argv as IArgvFind).namespace;
+            ancestor = (argv as IArgvFind).ancestor;
+            id = (argv as IArgvFind).id;
         }
 
         const [entities, requestResponse] = await this.findMany({namespace, ancestor, ids: [id]});
@@ -62,10 +62,8 @@ export class BaseEntity {
         }
 
         if (ids.length) {
-            // get the keys
-            const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [this, x]}));
-
             const datastore = datastoreOrm.getDatastore();
+            const keys = datastoreOrm.mapIdsToKeys(this, ids, namespace, ancestorKey);
 
             // friendly error
             const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
@@ -129,8 +127,8 @@ export class BaseEntity {
     }
 
     public static async truncate<T extends typeof BaseEntity>(this: T, options: IArgvNamespace = {}): Promise<[number, IRequestResponse]> {
-        const batch = 500;
-        const query = this.query().selectKey().limit(batch);
+        const maxBatch = 500;
+        const query = this.query().selectKey().limit(maxBatch);
         const namespace = options.namespace || "";
 
         // set namespace if we have
@@ -139,7 +137,7 @@ export class BaseEntity {
         }
 
         // we do batch delete to optimize performance
-        const batcher = new Batcher();
+        const batcher = new Batcher({maxBatch});
         const requestResponse: IRequestResponse = {executionTime: 0};
         let total = 0;
 
@@ -172,6 +170,7 @@ export class BaseEntity {
 
     // endregion
 
+    // public id: string | number = 0;
     private _isNew = true;
     private _isReadOnly = false;
     private _ancestorKey: IKey | undefined;
@@ -442,27 +441,34 @@ export class BaseEntity {
         return [this, performanceHelper.readResult()];
     }
 
-    public async getAncestor<T extends BaseEntity>(): Promise<[T | undefined, IRequestResponse]> {
-        const requestResponse = {executionTime: 0};
-        const key = this.getKey();
-        const ancestorKey = key.parent;
-        if (!ancestorKey) {
-            return [undefined, requestResponse];
+    public async getAncestor<T extends typeof BaseEntity>(entityType: T): Promise<[InstanceType<T> | undefined, IRequestResponse]> {
+        const ancestorEntityMeta = datastoreOrm.getEntityMeta(entityType);
+        let key = this.getKey();
+        while (key.parent) {
+            key = key.parent;
+            if (key && key.kind === ancestorEntityMeta.kind) {
+                const ancestorEntityType = datastoreOrm.getEntityByKind(ancestorEntityMeta.kind);
+                return await (ancestorEntityType as T)
+                    .query()
+                    .setNamespace(this.getNamespace())
+                    .filterKey(key)
+                    .runOnce();
+            }
         }
 
-        const ancestorEntityType = datastoreOrm.getEntityByKind(ancestorKey.kind);
-        if (!ancestorEntityType) {
-            return [undefined, requestResponse];
+        return [undefined, {executionTime: 0}];
+    }
+
+    public getAncestorId<T extends any>(entityType: T): IPropType<T, "id"> | undefined {
+        const entityMeta = datastoreOrm.getEntityMeta(entityType as any);
+
+        let key = this.getKey();
+        while (key.parent) {
+            key = key.parent;
+            if (key && key.kind === entityMeta.kind) {
+                return key.name ? key.name : Number(key.id);
+            }
         }
-
-        const ancestorEntityMeta = datastoreOrm.getEntityMeta(ancestorEntityType);
-        const [ancestor, requestResponse1] = await (ancestorEntityType as typeof BaseEntity)
-            .query()
-            .setNamespace(ancestorKey.namespace || "")
-            .filterKey("=", ancestorKey)
-            .runOnce();
-
-        return [ancestor as T, requestResponse1];
     }
 
     public toJSON() {
@@ -542,7 +548,7 @@ export class BaseEntity {
     private _set(column: string, value: any) {
         const entityColumn = datastoreOrm.getEntityColumn(this.constructor, column);
 
-        // we only have cast for non id since modifing id has some potential impact
+        // we only have cast for non id since modifying id has some potential impact
         if (column !== "id" && entityColumn.cast) {
             value = this._castValue( entityColumn.cast, value, this._data[column]);
         }
@@ -551,6 +557,13 @@ export class BaseEntity {
             // if we already have id and this is now a new entity, block for updating
             if (this._id && this._id !== value && !this._isNew) {
                 throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot update id of an existing entity. id (${(this as any).id}).`);
+            }
+
+            if (this._isNew && typeof value === "string") {
+                const config = configLoader.getConfig();
+                if (config.trimId) {
+                    value = value.trim();
+                }
             }
 
             this._id = value;

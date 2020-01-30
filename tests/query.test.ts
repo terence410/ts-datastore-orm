@@ -1,10 +1,13 @@
 import { assert, expect } from "chai";
 import {BaseEntity, Column, datastoreOrm, Entity} from "../src";
 import {Batcher} from "../src/Batcher";
+import {CompositeIndex} from "../src/decorators/CompositeIndex";
 import {IEntityCompositeIndexes} from "../src/types";
 
-const compositeIndexes1: IEntityCompositeIndexes = [{id: "desc"}, {date1: "desc", string1: "asc"}, {string1: "asc", ["object1.string"]: "desc"}];
-@Entity({namespace: "testing", kind: "queryTest", compositeIndexes: compositeIndexes1})
+@CompositeIndex({id: "desc"})
+@CompositeIndex({date1: "desc", string1: "asc"})
+@CompositeIndex({string1: "asc", ["object1.string"]: "desc"})
+@Entity({namespace: "testing", kind: "queryTest"})
 export class QueryTest extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -49,8 +52,9 @@ export class QueryTest extends BaseEntity {
     public objectArray1: Array<{string: string, value: number}> = [];
 }
 
-const compositeIndexes2: IEntityCompositeIndexes = [{number: "desc", string: "desc", __ancestor__: false}, {number: "desc"}];
-@Entity({namespace: "testing", kind: "queryTestChild", ancestor: QueryTest, compositeIndexes: compositeIndexes2})
+@CompositeIndex({number: "desc", string: "desc", __ancestor__: false})
+@CompositeIndex({number: "desc"})
+@Entity({namespace: "testing", kind: "queryTestChild", ancestor: QueryTest})
 export class QueryTestChild extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -264,7 +268,7 @@ describe("Query Test", () => {
         assert.isDefined(queryTestChild4);
 
         // get back the ancestor
-        const [ancestor1] = await queryTestChild1.getAncestor();
+        const [ancestor1] = await queryTestChild1.getAncestor(QueryTest);
         assert.isDefined(ancestor1);
         if (ancestor1) {
             assert.isTrue(ancestor1 instanceof QueryTest);
@@ -278,11 +282,27 @@ describe("Query Test", () => {
         assert.equal(query.getSQL(), "SELECT * from `queryTest` WHERE nullableDate = null");
     });
 
+    it("query: sql 2", async () => {
+        const [queryTest1] = await new QueryTest().save();
+
+        // ancestor of diff type
+        const [queryTestChild1] = await new QueryTestChild()
+            .setAncestor(queryTest1)
+            .save();
+
+        const query = QueryTestChild
+            .query()
+            .filter("id", ">=", queryTestChild1.id)
+            .setAncestor(queryTest1);
+        const [entity] = await query.runOnce();
+        assert.isDefined(entity);
+    });
+
     it("query: sql", async () => {
         const [queryTestChild] = await QueryTestChild.query().runOnce();
 
         if (queryTestChild) {
-            const [ancestor] = await queryTestChild.getAncestor();
+            const [ancestor] = await queryTestChild.getAncestor(QueryTest);
             const query = QueryTestChild.query()
                 .filterKey(queryTestChild.getKey())
                 .setAncestor(ancestor as any)

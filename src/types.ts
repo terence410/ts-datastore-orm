@@ -5,10 +5,12 @@ import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 
 // region basic
 
+export type IPropType<TObject, TProp extends keyof TObject> = TObject[TProp];
 export type IConfig = {
     keyFilename: string;
     friendlyError: boolean;
     namespace: string;
+    trimId: boolean;
 };
 
 // endregion
@@ -72,12 +74,12 @@ export interface IEntityColumnBase {
 export interface IEntityColumn extends IEntityColumnBase {
     type: any;
 }
-export type IEntityCompositeIndexes = Array<{[key: string]: "asc" | "desc"} | {__ancestor__?: boolean}>;
+export type IEntityCompositeIndex = {__ancestor__?: boolean} | {[key: string]: "asc" | "desc"};
+export type IEntityCompositeIndexes = IEntityCompositeIndex[];
 export interface IEntityMetaBase {
     namespace: string;
     kind: string;
     ancestor: object | null;
-    compositeIndexes: IEntityCompositeIndexes;
 }
 export interface IEntityMeta extends  IEntityMetaBase {
     excludeFromIndexes: string[]; // for caching
@@ -133,7 +135,7 @@ export interface IEvents<T> {
 // endregion
 
 // region arguments
-export type IArgvId = string | number;
+export type IArgvId = string | number | IKey;
 export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]: T[P]};
 export type IArgvColumn<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntity>;
 export type IArgvColumns<T extends BaseEntity> = Array<Exclude<keyof T, keyof BaseEntity>>;

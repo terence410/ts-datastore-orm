@@ -74,6 +74,14 @@ export class Query<T extends typeof BaseEntity> {
 
         this._ancestor = ancestorKey;
         this._query.hasAncestor(ancestorKey);
+
+        const filters = this._query.filters;
+        for (const filter of filters) {
+            if (filter.name === "__key__" && filter.op !== "HAS_ANCESTOR") {
+                (filter.val as IKey).parent = this._ancestor;
+            }
+        }
+
         return this;
     }
 

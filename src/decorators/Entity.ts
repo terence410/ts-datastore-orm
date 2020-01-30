@@ -13,7 +13,6 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
             kind: "",
             ancestor: null,
             excludeFromIndexes: [],
-            compositeIndexes: [],
         };
         newEntityMeta = Object.assign(newEntityMeta, entityMeta);
 

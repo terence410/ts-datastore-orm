@@ -2,7 +2,7 @@ import {BaseEntity} from "../../src/BaseEntity";
 import {Column} from "../../src/decorators/Column";
 import {Entity} from "../../src/decorators/Entity";
 
-@Entity({kind: "user"})
+@Entity({kind: "User"})
 export class User extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
