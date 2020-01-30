@@ -6,9 +6,9 @@ import {readJsonFile} from "./utils";
 
 class ConfigLoader {
     private _initialized = false;
-    private _config: IConfig = {keyFilename: "", friendlyError: false, namespace: ""};
+    private _config: IConfig = {keyFilename: "", friendlyError: false, namespace: "", trimId: true};
 
-    public getConfig() {
+    public getConfig(): IConfig {
         if (!this._initialized) {
             const filename = this._getConfigFile();
             let config!: IConfig;

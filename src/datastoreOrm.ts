@@ -5,13 +5,20 @@ import * as Datastore from "@google-cloud/datastore";
 import * as fs from "fs";
 import {BaseEntity} from "./BaseEntity";
 import {configLoader} from "./configLoader";
-import {namespaceStats} from "./enums/namespaceStats";
-import {stats} from "./enums/stats";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
-import {IArgvCreateKey, IEntityColumn, IEntityMeta, IKey, ISaveResult, IStats} from "./types";
+import {
+    IArgvCreateKey,
+    IArgvId,
+    IEntityColumn,
+    IEntityCompositeIndex,
+    IEntityCompositeIndexes,
+    IEntityMeta,
+    IKey,
+} from "./types";
 
 class DatastoreOrm {
     private _entityMetas = new Map<object, IEntityMeta>();
+    private _entityCompositeIndexes = new Map<object, IEntityCompositeIndexes>();
     private _entityColumns = new Map<object, {[key: string]: IEntityColumn}>();
     private _kindToEntity = new Map<string, object>();
     private _dataStore: Datastore.Datastore;
@@ -81,30 +88,49 @@ class DatastoreOrm {
         return key;
     }
 
+    /** @internal */
+    public mapIdsToKeys(entityType: object, ids: IArgvId[], namespace?: string, ancestorKey?: IKey) {
+        return ids.map(x => {
+            if (typeof x === "string" || typeof x === "number") {
+                return datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]});
+
+            } else {
+                if (namespace) {
+                    x.namespace = namespace;
+                }
+
+                if (ancestorKey) {
+                    x.parent = ancestorKey;
+                }
+
+                return x;
+            }
+        });
+    }
+
     public exportCompositeIndexes<T extends typeof BaseEntity>(filename: string, entityTypes: T[]) {
         let yaml = "indexes:\n";
         for (const entityType of entityTypes) {
             const entityMeta = this.getEntityMeta(entityType);
-            if (entityMeta.compositeIndexes.length) {
-                for (const compositeIndex of entityMeta.compositeIndexes) {
-                    yaml += "\n";
-                    yaml += `  - kind: ${entityMeta.kind}\n`;
-                    if (entityMeta.ancestor && (compositeIndex.__ancestor__ || compositeIndex.__ancestor__ === undefined)) {
-                        yaml += `    ancestor: yes\n`;
-                    } else {
-                        yaml += `    ancestor: no\n`;
+            const compositeIndexes = this.getEntityCompositeIndexes(entityType);
+            for (const compositeIndex of compositeIndexes) {
+                yaml += "\n";
+                yaml += `  - kind: ${entityMeta.kind}\n`;
+                if (entityMeta.ancestor && (compositeIndex.__ancestor__ || compositeIndex.__ancestor__ === undefined)) {
+                    yaml += `    ancestor: yes\n`;
+                } else {
+                    yaml += `    ancestor: no\n`;
+                }
+
+                yaml += `    properties:\n`;
+                for (let [column, direction] of Object.entries(compositeIndex)) {
+                    if (column === "id") {
+                        column = "__key__";
                     }
 
-                    yaml += `    properties:\n`;
-                    for (let [column, direction] of Object.entries(compositeIndex)) {
-                        if (column === "id") {
-                            column = "__key__";
-                        }
-
-                        if (column !== "__ancestor__") {
-                            yaml += `    - name: ${column}\n`;
-                            yaml += `      direction: ${direction}\n`;
-                        }
+                    if (column !== "__ancestor__") {
+                        yaml += `    - name: ${column}\n`;
+                        yaml += `      direction: ${direction}\n`;
                     }
                 }
             }
@@ -128,6 +154,23 @@ class DatastoreOrm {
             this._entityMetas.set(target, entityMeta);
             this._kindToEntity.set(entityMeta.kind, target);
         }
+
+        // also add composite indexes default if not exist
+        if (!this._entityCompositeIndexes.has(target)) {
+            this._entityCompositeIndexes.set(target, []);
+        }
+    }
+
+    /** @internal */
+    public addCompositeIndex(target: object, compositeIndex: IEntityCompositeIndex) {
+        if (!this._entityCompositeIndexes.has(target)) {
+            this._entityCompositeIndexes.set(target, []);
+        }
+
+        if (Object.keys(compositeIndex).length) {
+            const compositeIndexes = this._entityCompositeIndexes.get(target) as IEntityCompositeIndexes;
+            compositeIndexes.push(compositeIndex);
+        }
     }
 
     /** @internal */
@@ -143,6 +186,11 @@ class DatastoreOrm {
     /** @internal */
     public getEntityMeta(target: object): IEntityMeta {
         return this._entityMetas.get(target) as IEntityMeta;
+    }
+
+    /** @internal */
+    public getEntityCompositeIndexes(target: object): IEntityCompositeIndexes {
+        return this._entityCompositeIndexes.get(target) as IEntityCompositeIndexes;
     }
 
     /** @internal */

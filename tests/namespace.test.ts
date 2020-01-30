@@ -135,7 +135,7 @@ describe("Namespace Test", () => {
         }
 
         // get the ancestor
-        const [parent] = await child2.getAncestor<Namespace>();
+        const [parent] = await child2.getAncestor(Namespace);
         assert.isDefined(parent);
         if (parent) {
             assert.equal(parent.getNamespace(), newNamespace);

@@ -213,10 +213,10 @@ export class Transaction {
         let id: IArgvId = argv as IArgvId;
         let namespace: string | undefined;
         let ancestor: BaseEntity | undefined;
-        if (typeof argv === "object") {
-            namespace = argv.namespace;
-            ancestor = argv.ancestor;
-            id = argv.id;
+        if (typeof argv === "object" && argv.id) {
+            namespace = (argv as IArgvFind).namespace;
+            ancestor = (argv as IArgvFind).ancestor;
+            id = (argv as IArgvFind).id;
         }
 
         const [entities, requestResponse] = await this.findMany(entityType, {namespace, ancestor, ids: [id]});
@@ -238,9 +238,9 @@ export class Transaction {
 
         // friendly error
         if (ids.length) {
-            // get the keys
-            const keys = ids.map(x => datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]}));
+            const keys = datastoreOrm.mapIdsToKeys(entityType, ids, namespace, ancestorKey);
 
+            // friendly error
             const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
             try {
                 const [results] = await this.datastoreTransaction.get(keys);

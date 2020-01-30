@@ -1,3 +1,4 @@
+import {CompositeIndex} from "./src/decorators/CompositeIndex";
 import {LockHelper} from "./src/helpers/LockHelper";
 import {
     BaseEntity,
@@ -12,7 +13,9 @@ import {
     Transaction,
 } from "./src/index";
 
-@Entity({namespace: "testing", kind: "user", compositeIndexes: [{id: "desc"}, {string: "asc", ["object.name"]: "asc"}]})
+@CompositeIndex({id: "desc"})
+@CompositeIndex({string: "asc", ["object.name"]: "asc"})
+@Entity({namespace: "testing", kind: "user"})
 export class User extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -84,7 +87,8 @@ async function ancestorExamples() {
         .save();
 
     // get back the user
-    const [user2] = await taskGroup1.getAncestor<User>();
+    const [user2] = await taskGroup1.getAncestor(User);
+    const user2Id = await taskGroup1.getAncestorId(User);
 
     // ignore the strong type on method call
     const [taskGroup2] = await TaskGroup.query()

@@ -73,9 +73,11 @@ async function main() {
 
 # General Usage
 ```typescript
-import {BaseEntity, Batcher, Column, datastoreOrm, Entity, Transaction, DatastoreOrmDatastoreError, DatastoreOrmError} from "ts-datastore-orm";
+import {BaseEntity, Batcher, Column, CompositeIndex, datastoreOrm, Entity, Transaction, DatastoreOrmDatastoreError, DatastoreOrmError} from "ts-datastore-orm";
 
-@Entity({namespace: "testing", kind: "user", compositeIndexes: [{id: "desc"}, {string: "asc", ["object.name"]: "asc", __ancestor__: false}]})
+@CompositeIndex({id: "desc"})
+@CompositeIndex({string: "asc", ["object.name"]: "asc"})
+@Entity({namespace: "testing", kind: "user"})
 export class User extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -147,7 +149,8 @@ async function ancestorExamples() {
         .save();
 
     // get back the user
-    const [user2] = await taskGroup1.getAncestor<User>();
+    const [user2] = await taskGroup1.getAncestor(User);
+    const user2Id = await taskGroup1.getAncestorId(User);
 
     // ignore the strong type on method call
     const [taskGroup2] = await TaskGroup.query()
@@ -174,8 +177,6 @@ async function ancestorExamples() {
     const [taskGroupList1] = await TaskGroup.query()
         .setAncestor(user1)
         .run();
-
-
 }
 
 async function eventExamples() {

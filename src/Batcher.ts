@@ -6,9 +6,13 @@ import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {IRequestResponse, ISaveResult} from "./types";
 
+type IBatcherOptions = {maxBatch: number};
+
 export class Batcher {
-    constructor() {
-        //
+    private _options: IBatcherOptions;
+
+    constructor(options: Partial<IBatcherOptions> = {}) {
+        this._options = Object.assign({maxBatch: 500}, options);
     }
 
     public async save(entities: BaseEntity[]): Promise<[number, IRequestResponse]> {
@@ -17,6 +21,7 @@ export class Batcher {
         const datastore = datastoreOrm.getDatastore();
         const insertEntities = entities.filter(x => x.isNew);
         const updateEntities = entities.filter(x => !x.isNew);
+        const maxBatch = this._options.maxBatch;
 
         // check any thing are just read only
         const readyOnlyEntity = entities.find(x => x.isReadOnly);
@@ -26,56 +31,60 @@ export class Batcher {
 
         // insert
         if (insertEntities.length) {
-            // set isNew to false
-            const insertSaveDataList = insertEntities.map(x => x.getSaveData());
-            insertEntities.forEach(x => x.isNew = false);
+            for (let i = 0; i < entities.length; i += maxBatch) {
+                const insertSaveDataList = insertEntities.slice(i, maxBatch).map(x => x.getSaveData());
+                // set isNew to false
+                insertEntities.forEach(x => x.isNew = false);
 
-            // friendly error
-            const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-            try {
-                const [insertResult] = await datastore.insert(insertSaveDataList);
+                // friendly error
+                const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+                try {
+                    const [insertResult] = await datastore.insert(insertSaveDataList);
 
-                // below should be the same as Base Entity
-                for (let i = 0; i < insertSaveDataList.length; i++) {
-                    const newKey = insertSaveDataList[i].key;
-                    const entity = insertEntities[i];
-                    // if we have no ide
-                    if (!(entity as any)._id) {
-                        (entity as any)._set("id", Number(newKey.id));
+                    // below should be the same as Base Entity
+                    for (let j = 0; j < insertSaveDataList.length; j++) {
+                        const newKey = insertSaveDataList[j].key;
+                        const entity = insertEntities[j];
+                        // if we have no ide
+                        if (!(entity as any)._id) {
+                            (entity as any)._set("id", Number(newKey.id));
+                        }
                     }
-                }
 
-            } catch (err) {
-                const error = new DatastoreOrmDatastoreError(`Batcher Save Error for insert. Error: ${err.message}.`,
-                    err.code,
-                    err);
-                if (friendlyErrorStack) {
-                    error.stack = friendlyErrorStack;
-                }
+                } catch (err) {
+                    const error = new DatastoreOrmDatastoreError(`Batcher Save Error for insert. Error: ${err.message}.`,
+                        err.code,
+                        err);
+                    if (friendlyErrorStack) {
+                        error.stack = friendlyErrorStack;
+                    }
 
-                throw error;
+                    throw error;
+                }
             }
         }
 
         // update
         if (updateEntities.length) {
-            const updateSaveDataList = updateEntities.map(x => x.getSaveData());
-            updateEntities.forEach(x => x.isNew = false);
+            for (let i = 0; i < entities.length; i += maxBatch) {
+                const updateSaveDataList = updateEntities.slice(i, maxBatch).map(x => x.getSaveData());
+                updateEntities.forEach(x => x.isNew = false);
 
-            // friendly error
-            const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-            try {
-                const [updateResult] = await datastore.update(updateSaveDataList);
+                // friendly error
+                const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+                try {
+                    const [updateResult] = await datastore.update(updateSaveDataList);
 
-            } catch (err) {
-                const error = new DatastoreOrmDatastoreError(`Batcher Save Error for update. Error: ${err.message}.`,
-                    err.code,
-                    err);
-                if (friendlyErrorStack) {
-                    error.stack = friendlyErrorStack;
+                } catch (err) {
+                    const error = new DatastoreOrmDatastoreError(`Batcher Save Error for update. Error: ${err.message}.`,
+                        err.code,
+                        err);
+                    if (friendlyErrorStack) {
+                        error.stack = friendlyErrorStack;
+                    }
+
+                    throw error;
                 }
-
-                throw error;
             }
         }
 
@@ -91,24 +100,26 @@ export class Batcher {
 
         // mass delete
         const datastore = datastoreOrm.getDatastore();
+        const maxBatch = this._options.maxBatch;
 
-        // friendly error
-        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-        try {
-            const [result] = await datastore.delete(entities.map(x => x.getKey()));
+        for (let i = 0; i < entities.length; i += maxBatch) {
+            // friendly error
+            const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
+            try {
+                const [result] = await datastore.delete(entities.slice(i, maxBatch).map(x => x.getKey()));
 
-            // emit events
-            entities.forEach(x => eventEmitters.emit("delete", x));
+                // emit events
+                entities.forEach(x => eventEmitters.emit("delete", x));
+            } catch (err) {
+                const error = new DatastoreOrmDatastoreError(`Batcher Delete Error. Error: ${err.message}.`,
+                    err.code,
+                    err);
+                if (friendlyErrorStack) {
+                    error.stack = friendlyErrorStack;
+                }
 
-        } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`Batcher Delete Error. Error: ${err.message}.`,
-                err.code,
-                err);
-            if (friendlyErrorStack) {
-                error.stack = friendlyErrorStack;
+                throw error;
             }
-
-            throw error;
         }
 
         return [entities.length, performanceHelper.readResult()];

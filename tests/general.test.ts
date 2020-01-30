@@ -2,6 +2,8 @@ import { assert, expect } from "chai";
 import {datastoreOrm} from "../src";
 import {Batcher} from "../src/Batcher";
 // @ts-ignore
+import {Guild} from "./entities/Guild";
+// @ts-ignore
 import {Task} from "./entities/Task";
 // @ts-ignore
 import {TaskGroup} from "./entities/TaskGroup";
@@ -64,6 +66,14 @@ describe("General Test", () => {
         }
     });
 
+    it("create entity with empty space", async () => {
+        const guild1 = Guild.create({id: " abc  "});
+        assert.equal(guild1.id, "abc");
+
+        const guild2 = Guild.create({id: "  "});
+        assert.equal(guild2.id, "");
+    });
+
     it("allocate ids", async () => {
         const [ids] = await User.allocateIds(10);
         const users = ids.map(id => User.create({id}));
@@ -82,6 +92,7 @@ describe("General Test", () => {
 
     it("new entity", async () => {
         const ids = [1, 2, 3, 4, 5];
+        const entities = [];
         for (let i = 0; i < ids.length; i++) {
             const entity = new User();
             entity.id = ids[i];
@@ -90,16 +101,28 @@ describe("General Test", () => {
             entity.object = {name: i};
             entity.buffer = Buffer.alloc(i + 1);
             await entity.save();
+            entities.push(entity);
         }
 
+        // findOne
+        const [entity1] = await User.find(ids[0]);
+        assert.isDefined(entity1);
+
+        // findMany
         const [entities1] = await User.findMany(ids);
-        const [entities2] = await User
+        assert.equal(entities1.length, ids.length);
+
+        // find Many by keys
+        const [entities2] = await User.findMany(entities.map(x => x.getKey()));
+        assert.equal(entities2.length, ids.length);
+
+        // query
+        const [entities3] = await User
             .query()
             .filter("id", ">=", ids[0])
             .filter("id", "<=", ids[ids.length - 1])
             .run();
-        assert.equal(entities1.length, ids.length);
-        assert.equal(entities2.length, ids.length);
+        assert.equal(entities3.length, ids.length);
     });
 
     it("merge value", async () => {
@@ -206,10 +229,14 @@ describe("General Test: Entity Group", () => {
         assert.isDefined(task3);
 
         if (task3) {
-            const [taskGroup3] = await task3.getAncestor<TaskGroup>();
+            const [taskGroup3] = await task3.getAncestor(TaskGroup);
+            const [user3] = await task3.getAncestor(User);
             assert.isDefined(taskGroup3);
-            if (taskGroup3) {
-                assert.deepEqual(taskGroup3.getKey().serialized, taskGroup1.getKey().serialized);
+            assert.isDefined(user3);
+
+            if (taskGroup3 && user3) {
+                assert.equal(task3.getAncestorId(TaskGroup), taskGroup3.id);
+                assert.equal(task3.getAncestorId(User), user3.id);
             }
         }
     });
