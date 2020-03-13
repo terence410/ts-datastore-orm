@@ -61,12 +61,14 @@ const batch = 1000;
 
 describe("Performance Test", () => {
     it("truncate", async () => {
-        await PerformanceTest1.truncate();
-        await PerformanceTest2.truncate();
+        const [total1] = await PerformanceTest1.truncate();
+        const [total2] = await PerformanceTest2.truncate();
+        const [total3] = await PerformanceTest3.truncate();
+        console.log(`Truncate: PerformanceTest1: ${total1}, PerformanceTest2: ${total2}, PerformanceTest3: ${total3}`);
     });
 
     // 45ms
-    it("create empty entity 1", async () => {
+    it(`create empty entity: ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 
         for (let i = 0; i < batch; i++ ) {
@@ -79,7 +81,7 @@ describe("Performance Test", () => {
     });
 
     // 200ms, around 160ms generated from getEntityColumn
-    it("create empty entity 1 with default values", async () => {
+    it(`create empty entity with default values:  ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 
         for (let i = 0; i < batch; i++ ) {
@@ -92,7 +94,7 @@ describe("Performance Test", () => {
     });
 
     // 266ms, around 80ms overhead generated from parser
-    it("create empty entity with parser", async () => {
+    it(`create empty entity with parser: ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 
         for (let i = 0; i < batch; i++ ) {
@@ -105,7 +107,7 @@ describe("Performance Test", () => {
     });
 
     // 1100ms, around 100ms from internal overhead, around 800ms from datastore.key call
-    it("create empty entity with save operation ", async () => {
+    it(`create empty entity with save operation:  ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 
         for (let i = 0; i < batch; i++ ) {
@@ -118,4 +120,15 @@ describe("Performance Test", () => {
 
         console.log(performanceHelper.readResult());
     });
+
+    it(`create entity sequentially: ${total}`, async () => {
+        const performanceHelper = new PerformanceHelper().start();
+
+        for (let j = 0; j < total; j++) {
+            const entity = new PerformanceTest1();
+            await entity.save();
+        }
+
+        console.log(performanceHelper.readResult());
+    }).timeout(60 * 1000);
 });

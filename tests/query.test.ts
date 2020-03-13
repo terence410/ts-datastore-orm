@@ -124,6 +124,46 @@ describe("Query Test", () => {
         assert.equal(count, total - number1 - 1);
     });
 
+    it("query: with end cursor", async () => {
+        const number1 = 4;
+        const query1 = QueryTest.query()
+            .filter("number1", ">", number1)
+            .limit(5);
+
+        const [entities1] = await query1.run();
+        const endCursor = query1.getEndCursor();
+        assert.isTrue(query1.hasNextPage());
+        assert.isNotEmpty(endCursor);
+
+        // we continue to run with cursor
+        const query2 = QueryTest.query()
+            .filter("number1", ">", number1)
+            .setEndCursor(endCursor)
+            .limit(5);
+
+        const [entities2] = await query2.run();
+        assert.isTrue(query2.hasNextPage());
+        assert.notEqual(query2.getEndCursor(), endCursor);
+
+        // run till the end
+        while (query2.hasNextPage()) {
+            await query2.run();
+        }
+        assert.isFalse(query2.hasNextPage());
+        const finalEndCursor = query2.getEndCursor();
+        assert.isString(endCursor);
+
+        // try to use the final cursor
+        const query3 = QueryTest.query()
+            .filter("number1", ">", number1)
+            .setEndCursor(finalEndCursor)
+            .limit(5);
+
+        const [entities3] = await query3.run();
+        assert.equal(entities3.length, 0);
+        assert.isFalse(query3.hasNextPage());
+    });
+
     it("query: order", async () => {
         const number1 = 4;
 

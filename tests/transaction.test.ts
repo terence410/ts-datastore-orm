@@ -118,6 +118,18 @@ describe("Transaction Test", () => {
         assert.isFalse(transactionResponse.hasCommitted);
     });
 
+    it("throw error in transaction", async () => {
+        try {
+            const [_, transactionResponse] = await Transaction.execute(async transaction => {
+                throw new Error("test");
+            });
+            assert.isTrue(false);
+        } catch (err) {
+            assert.isFalse(err instanceof DatastoreOrmDatastoreError);
+            assert.equal(err.message, "test");
+        }
+    });
+
     it("conflict transaction", async () => {
         const [user1] = await TransactionTest.create({name: "Terence"}).save();
 

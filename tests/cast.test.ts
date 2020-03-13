@@ -91,7 +91,7 @@ export class Cast extends BaseEntity {
     public boolean: boolean = false;
 
     @Column({cast: Date})
-    public date: Date = new Date();
+    public date?: Date;
 
     @Column({cast: mergeObject})
     public mergeObject: IUnionObject = {name: "Terence", age: 10, home: {country: "hk", district: "island"}};
@@ -124,6 +124,12 @@ const values = {
 describe("Cast Test", () => {
     it("truncate", async () => {
         await Cast.truncate();
+    });
+
+    it("truncate", async () => {
+        const input = {date: (new Date()).toDateString(), id: 123};
+        console.log(input);
+        await Cast.create(input as any).save();
     });
 
     it("Create and find entity", async () => {

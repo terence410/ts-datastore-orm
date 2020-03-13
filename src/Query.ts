@@ -22,6 +22,7 @@ type IQueryOrder = {column: string, orderOptions?: IOrderOptions};
 
 export class Query<T extends typeof BaseEntity> {
     private _lastRunQueryInfo: DatastoreQuery.RunQueryInfo | undefined;
+    private _endCursor: string  = "";
     private _ancestor: IKey | undefined;
     private _isReadOnly: boolean = false;
     private _namespace = "";
@@ -49,6 +50,15 @@ export class Query<T extends typeof BaseEntity> {
         }
 
         return false;
+    }
+
+    public getEndCursor(): string {
+        return this._endCursor;
+    }
+
+    public setEndCursor(endCursor: string) {
+        this._endCursor = endCursor;
+        return this;
     }
 
     public selectKey() {
@@ -184,8 +194,9 @@ export class Query<T extends typeof BaseEntity> {
         const entities: Array<InstanceType<T>> = [];
 
         // set cursor if has
-        if (this._lastRunQueryInfo && this._lastRunQueryInfo.endCursor) {
-            this._query.start(this._lastRunQueryInfo.endCursor);
+        const endCursor = this.getEndCursor();
+        if (endCursor) {
+            this._query.start(endCursor);
         }
 
         // friendly error
@@ -198,6 +209,11 @@ export class Query<T extends typeof BaseEntity> {
             for (const entityData of results) {
                 const entity = this.entityType.newFromEntityData(entityData, this._isReadOnly);
                 entities.push(entity);
+            }
+
+            // update the endCursor
+            if (this._lastRunQueryInfo && this._lastRunQueryInfo.endCursor) {
+                this.setEndCursor(this._lastRunQueryInfo.endCursor);
             }
 
             return [entities, performanceHelper.readResult()];
@@ -217,8 +233,10 @@ export class Query<T extends typeof BaseEntity> {
     public runStream(): IQueryStreamEvent<InstanceType<T>> {
         const streamEvent = new EventEmitter();
 
-        if (this._lastRunQueryInfo && this._lastRunQueryInfo.endCursor) {
-            this._query.start(this._lastRunQueryInfo.endCursor);
+        // update endCursor
+        const endCursor = this.getEndCursor();
+        if (endCursor) {
+            this._query.start(endCursor);
         }
 
         // friendly error
@@ -244,6 +262,10 @@ export class Query<T extends typeof BaseEntity> {
 
         stream.on("info", (info) => {
             this._lastRunQueryInfo = info;
+            if (this._lastRunQueryInfo && this._lastRunQueryInfo.endCursor) {
+                this.setEndCursor(this._lastRunQueryInfo.endCursor);
+            }
+
             streamEvent.emit("info", info);
         });
 

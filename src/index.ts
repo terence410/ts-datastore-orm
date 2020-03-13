@@ -3,6 +3,7 @@ import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
 import {datastoreStats} from "./datastoreStats";
 import {Column} from "./decorators/Column";
+import {CompositeIndex} from "./decorators/CompositeIndex";
 import {Entity} from "./decorators/Entity";
 import {errorCodes} from "./enums/errorCodes";
 import {namespaceStats} from "./enums/namespaceStats";
@@ -27,6 +28,7 @@ export {
     Batcher,
     Transaction,
     BaseEntity,
+    CompositeIndex,
     Column,
     Entity,
     datastoreOrm,
