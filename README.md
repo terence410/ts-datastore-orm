@@ -450,3 +450,6 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://www.npmjs.com/package/@google-cloud/datastore
 - https://www.npmjs.com/package/@google-cloud/firestore
 
+# TODO
+- support multiple datastore from different service account
+- make truncate harder to avoid mistake

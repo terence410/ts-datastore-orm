@@ -7,7 +7,6 @@ import {Entity} from "../src/decorators/Entity";
 import {EntityHelper} from "../src/helpers/EntityHelper";
 import {IncrementHelper} from "../src/helpers/IncrementHelper";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
-import {timeout} from "../src/utils";
 
 @Entity({namespace: "testing", kind: "helper"})
 export class Helper extends BaseEntity {
@@ -33,6 +32,7 @@ export class HelperChild extends BaseEntity {
 describe("Helper Test: Truncate", () => {
     it("truncate", async () => {
         await Helper.truncate();
+        await Helper.truncate({namespace: ""});
         await HelperChild.truncate();
     });
 });
@@ -133,5 +133,15 @@ describe("Helper Test: Entity", () => {
         // all values are the same
         const value1 = results[0][0].value;
         assert.isTrue(results.every(x => x[0].value === value1));
+    });
+
+    it("findOrCreate on namespace", async () => {
+        const namespace = "";
+        const id = 1;
+        const entityHelper = new EntityHelper(Helper, namespace);
+        const [entity] = await entityHelper.findOrCreate({id, total1: 11});
+
+        const [foundEntity] = await Helper.find({id, namespace});
+        assert.isDefined(foundEntity);
     });
 });

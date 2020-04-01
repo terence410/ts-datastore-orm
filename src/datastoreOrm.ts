@@ -55,7 +55,7 @@ class DatastoreOrm {
         for (let i = 0; i < path.length; i++) {
             const target = path[i++];
             const entityMeta = datastoreOrm.getEntityMeta(target);
-            if (!namespace) {
+            if (namespace === undefined) {
                 namespace = entityMeta.namespace;
             }
 

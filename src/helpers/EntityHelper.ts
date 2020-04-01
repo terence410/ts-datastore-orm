@@ -6,7 +6,7 @@ import {PerformanceHelper} from "./PerformanceHelper";
 
 // not design to work for transaction
 export class EntityHelper<T extends typeof BaseEntity> {
-    constructor(public readonly entityType: T) {
+    constructor(public readonly entityType: T, public namespace?: string) {
 
     }
 
@@ -20,6 +20,12 @@ export class EntityHelper<T extends typeof BaseEntity> {
 
         // we find if entity exist
         const query1 = this.entityType.query();
+
+        // only set namespace if assigned, cuz the entity itself may have default namespace
+        if (this.namespace !== undefined) {
+            query1.setNamespace(this.namespace);
+        }
+
         if (ancestor) {
             query1.setAncestor(ancestor);
         }
@@ -29,6 +35,11 @@ export class EntityHelper<T extends typeof BaseEntity> {
         if (!entity) {
             // we create a new entity
             entity = this.entityType.create(values);
+
+            if (this.namespace !== undefined) {
+                entity.setNamespace(this.namespace);
+            }
+
             if (ancestor) {
                 entity.setAncestor(ancestor);
             }
@@ -46,6 +57,11 @@ export class EntityHelper<T extends typeof BaseEntity> {
                 // if error is entity exists, we try to load again
                 if ((currentError as any).code === errorCodes.ALREADY_EXISTS) {
                     const query2 = this.entityType.query();
+
+                    if (this.namespace !== undefined) {
+                        entity.setNamespace(this.namespace);
+                    }
+
                     if (ancestor) {
                         query2.setAncestor(ancestor);
                     }
