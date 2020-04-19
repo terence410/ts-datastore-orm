@@ -3,6 +3,8 @@ import {BaseEntity, Column, datastoreOrm, Entity} from "../src";
 import {Batcher} from "../src/Batcher";
 import {CompositeIndex} from "../src/decorators/CompositeIndex";
 import {IEntityCompositeIndexes} from "../src/types";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 @CompositeIndex({id: "desc"})
 @CompositeIndex({date1: "desc", string1: "asc"})
@@ -67,6 +69,9 @@ export class QueryTestChild extends BaseEntity {
 }
 
 const total = 50;
+
+// before test
+before(beforeCallback);
 
 describe("Query Test", () => {
     it("truncate", async () => {

@@ -2,6 +2,11 @@ import { assert, expect } from "chai";
 import {datastoreStats} from "../src";
 // @ts-ignore
 import {User} from "./entities/User";
+// @ts-ignore
+import {beforeCallback} from "./share";
+
+// before test
+before(beforeCallback);
 
 describe("Admin Test", () => {
     it("namespaces and kinds", async () => {

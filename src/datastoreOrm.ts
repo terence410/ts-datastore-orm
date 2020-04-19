@@ -4,11 +4,11 @@
 import * as Datastore from "@google-cloud/datastore";
 import * as fs from "fs";
 import {BaseEntity} from "./BaseEntity";
-import {configLoader} from "./configLoader";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {
     IArgvCreateKey,
     IArgvId,
+    IConnectionOptions,
     IEntityColumn,
     IEntityCompositeIndex,
     IEntityCompositeIndexes,
@@ -17,28 +17,64 @@ import {
 } from "./types";
 
 class DatastoreOrm {
+    public friendlyError: boolean = false;
     private _entityMetas = new Map<object, IEntityMeta>();
     private _entityCompositeIndexes = new Map<object, IEntityCompositeIndexes>();
     private _entityColumns = new Map<object, {[key: string]: IEntityColumn}>();
     private _kindToEntity = new Map<string, object>();
-    private _dataStore: Datastore.Datastore;
+    private _datastoreMap = new Map<string, Datastore.Datastore>();
+    private _defaultNamespaceMap = new Map<string, string>();
+    private _dummyDataStore: Datastore.Datastore = new Datastore.Datastore();
 
     constructor() {
-        const config = configLoader.getConfig();
-        this._dataStore = new Datastore.Datastore({keyFilename: config.keyFilename});
+        // do nothing
     }
 
     // region public methods
 
-    public getDatastore(): Datastore.Datastore {
-        return this._dataStore;
-    }
+    public addConnection(connection: string, options: IConnectionOptions) {
+        if (!this._datastoreMap.has(connection)) {
+            if (options.keyFilename) {
+                this._datastoreMap.set(connection,
+                    new Datastore.Datastore({keyFilename: options.keyFilename}));
 
-    public useFriendlyErrorStack(): string | undefined {
-        if (configLoader.getConfig().friendlyError) {
-            return new Error().stack;
+            } else if (options.clientEmail && options.privateKey) {
+                this._datastoreMap.set(connection,
+                    new Datastore.Datastore({credentials: {client_email: options.clientEmail, private_key: options.privateKey}}));
+
+            }
+
+            // return error if the connection options is invalid
+            if (!this._datastoreMap.has(connection)) {
+                throw new DatastoreOrmOperationError(`Invalid Datastore connection options.`);
+            }
+
+            // if we have default namespace, add it
+            if (options.defaultNamespace) {
+                this._defaultNamespaceMap.set(connection, options.defaultNamespace);
+
+            }
         }
     }
+
+    public getConnection(connection: string = "default"): Datastore.Datastore {
+        if (this._datastoreMap.has(connection)) {
+            return this._datastoreMap.get(connection) as Datastore.Datastore;
+        }
+
+        throw new DatastoreOrmOperationError(`Datastore connection not exist for ${connection}. ` +
+            `Please add a new connection by: datastoreOrm.addConnection("${connection}", {keyFilename: "serviceAccount.json"});`);
+    }
+
+    public getDefaultNamespace(connection: string): string | undefined {
+        if (this._defaultNamespaceMap.has(connection)) {
+            return this._defaultNamespaceMap.get(connection);
+        }
+    }
+
+    // public getDatastore(): Datastore.Datastore {
+    //     return this._dataStore;
+    // }
 
     public createKey(argv: any[] | IArgvCreateKey): IKey {
         const keyPaths: Array<string | number> = [];
@@ -78,34 +114,13 @@ class DatastoreOrm {
             }
         }
 
-        // create key with namespace
-        const datastore = this.getDatastore();
-        const key = datastore.key({namespace, path: keyPaths});
+        // create key with namespace (use default connection)
+        const key = this._dummyDataStore.key({namespace, path: keyPaths});
         if (ancestorKey) {
             key.parent = ancestorKey;
         }
 
         return key;
-    }
-
-    /** @internal */
-    public mapIdsToKeys(entityType: object, ids: IArgvId[], namespace?: string, ancestorKey?: IKey) {
-        return ids.map(x => {
-            if (typeof x === "string" || typeof x === "number") {
-                return datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]});
-
-            } else {
-                if (namespace) {
-                    x.namespace = namespace;
-                }
-
-                if (ancestorKey) {
-                    x.parent = ancestorKey;
-                }
-
-                return x;
-            }
-        });
     }
 
     public exportCompositeIndexes<T extends typeof BaseEntity>(filename: string, entityTypes: T[]) {
@@ -142,6 +157,33 @@ class DatastoreOrm {
     // endregion
 
     // region public internal methods
+
+    /** @internal */
+    public useFriendlyErrorStack(): string | undefined {
+        if (this.friendlyError) {
+            return new Error().stack;
+        }
+    }
+
+    /** @internal */
+    public mapIdsToKeys(entityType: object, ids: IArgvId[], namespace?: string, ancestorKey?: IKey) {
+        return ids.map(x => {
+            if (typeof x === "string" || typeof x === "number") {
+                return datastoreOrm.createKey({namespace, ancestorKey, path: [entityType, x]});
+
+            } else {
+                if (namespace) {
+                    x.namespace = namespace;
+                }
+
+                if (ancestorKey) {
+                    x.parent = ancestorKey;
+                }
+
+                return x;
+            }
+        });
+    }
 
     /** @internal */
     public getEntityByKind(kind: string): object | undefined {

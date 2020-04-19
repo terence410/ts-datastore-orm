@@ -9,7 +9,7 @@ import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Transaction} from "./Transaction";
 import {
-    IArgvColumn, IArgvColumns,
+    IArgvColumn,
     IArgvValue,
     IKey,
     IOperator,
@@ -36,7 +36,7 @@ export class Query<T extends typeof BaseEntity> {
             this._query = transaction.datastoreTransaction.createQuery(entityMeta.namespace, entityMeta.kind);
 
         } else {
-            this._query = datastoreOrm.getDatastore().createQuery(entityMeta.namespace, entityMeta.kind);
+            this._query = datastoreOrm.getConnection(entityMeta.connection).createQuery(entityMeta.namespace, entityMeta.kind);
         }
     }
 
@@ -158,6 +158,7 @@ export class Query<T extends typeof BaseEntity> {
 
         if (column === "id") {
             const key = datastoreOrm.createKey({namespace: this._namespace, path: [this.entityType, value]});
+
             if (this._ancestor) {
                 key.parent = this._ancestor;
             }

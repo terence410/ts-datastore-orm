@@ -1,15 +1,14 @@
 import {BaseEntity} from "../BaseEntity";
-import {configLoader} from "../configLoader";
 import {datastoreOrm} from "../datastoreOrm";
 import {DatastoreOrmDecoratorError} from "../errors/DatastoreOrmDecoratorError";
 import {IEntityMeta, IEntityMetaBase} from "../types";
 
 export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
     return (target: object) => {
-        const config = configLoader.getConfig();
         // set default values
         let newEntityMeta: IEntityMeta = {
-            namespace: config.namespace,
+            connection: "default",
+            namespace: entityMeta.namespace || "",
             kind: "",
             ancestor: null,
             excludeFromIndexes: [],

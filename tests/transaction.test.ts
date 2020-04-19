@@ -5,6 +5,8 @@ import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {timeout} from "../src/utils";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 @Entity({namespace: "testing", kind: "transactionTest"})
 export class TransactionTest extends BaseEntity {
@@ -29,6 +31,9 @@ export class TransactionTestChild extends BaseEntity {
     @Column()
     public name: string = "";
 }
+
+// before test
+before(beforeCallback);
 
 describe("Transaction Test", () => {
     it("truncate", async () => {

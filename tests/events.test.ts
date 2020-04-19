@@ -1,5 +1,7 @@
 import { assert, expect } from "chai";
 import {BaseEntity, Batcher, Column, Entity, Transaction} from "../src";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 @Entity({namespace: "testing", kind: "eventTest"})
 export class EventTest extends BaseEntity {
@@ -14,6 +16,9 @@ let existEntity1: EventTest;
 let existEntity2: EventTest;
 let existEntity3a: EventTest;
 let existEntity3b: EventTest;
+
+// before test
+before(beforeCallback);
 
 describe("Event Test", () => {
     it("truncate", async () => {

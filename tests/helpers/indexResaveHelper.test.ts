@@ -1,6 +1,8 @@
 import { assert, expect } from "chai";
 import {BaseEntity, Column, datastoreOrm, Entity} from "../../src";
 import {IndexResaveHelper} from "../../src/helpers/IndexResaveHelper";
+// @ts-ignore
+import {beforeCallback} from "../share";
 
 @Entity({kind: "indexResave"})
 export class IndexResave extends BaseEntity {
@@ -18,6 +20,10 @@ export class IndexResave extends BaseEntity {
 }
 
 const total = 10;
+
+// before test
+before(beforeCallback);
+
 describe("Index Resave Helper Test", () => {
     it("truncate", async () => {
         await IndexResave.truncate();

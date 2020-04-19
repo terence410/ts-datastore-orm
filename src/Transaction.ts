@@ -14,8 +14,8 @@ import {
     IArgvFindMany,
     IArgvId,
     IKey,
-    IRequestResponse,
-    ITransactionOptions,
+    IRequestResponse, ITransactionDefaultOptions,
+    ITransactionExecuteOptions, ITransactionOptions,
     ITransactionResponse,
 } from "./types";
 // datastore transaction operations:
@@ -26,15 +26,15 @@ import {
 // above should not use await (it probably will be done by batch by transaction)
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const defaultOptions: ITransactionOptions = {delay: 50, maxRetry: 0, readOnly: false};
+const defaultOptions: ITransactionDefaultOptions = {delay: 50, maxRetry: 0};
 
 export class Transaction {
-    public static setDefaultOptions(lockOptions: Partial<ITransactionOptions> = {}) {
+    public static setDefaultOptions(lockOptions: Partial<ITransactionExecuteOptions> = {}) {
         Object.assign(defaultOptions, lockOptions);
     }
     
     public static async execute<T extends any>(callback: (transaction: Transaction) => Promise<T>,
-                                               options: Partial<ITransactionOptions> = {}): Promise<[T, ITransactionResponse]> {
+                                               options: Partial<ITransactionExecuteOptions> = {}): Promise<[T, ITransactionResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
         // return result
@@ -118,7 +118,7 @@ export class Transaction {
     public skipCommit: boolean = false;
 
     constructor(options: Partial<ITransactionOptions> = {}) {
-        const datastore = datastoreOrm.getDatastore();
+        const datastore = datastoreOrm.getConnection(options.connection);
         this.datastoreTransaction = datastore.transaction({readOnly: options.readOnly});
     }
 
@@ -314,7 +314,6 @@ export class Transaction {
             namespace = argv.namespace;
         }
 
-        const datastore = datastoreOrm.getDatastore();
         const key = datastoreOrm.createKey({namespace, path: [entityType]});
 
         // friendly error

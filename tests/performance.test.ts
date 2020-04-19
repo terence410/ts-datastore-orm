@@ -1,6 +1,8 @@
 import { assert, expect } from "chai";
-import {BaseEntity, Column, datastoreOrm, Entity} from "../src";
+import {BaseEntity, Column, Entity} from "../src";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 function customCast(value: any) {
     return 1;
@@ -59,6 +61,9 @@ const values = {
 const total = 1000;
 const batch = 1000;
 
+// before test
+before(beforeCallback);
+
 describe("Performance Test", () => {
     it("truncate", async () => {
         const [total1] = await PerformanceTest1.truncate();
@@ -113,7 +118,6 @@ describe("Performance Test", () => {
         for (let i = 0; i < batch; i++ ) {
             for (let j = 0; j < total; j++) {
                 const entity = new PerformanceTest3();
-                const datastore = datastoreOrm.getDatastore();
                 const saveData = entity.getSaveData();
             }
         }

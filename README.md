@@ -119,6 +119,13 @@ export class TaskGroup extends BaseEntity {
     public number: number = 0;
 }
 
+async function init() {
+    datastoreOrm.addConnection("default", {keyFilename: "serviceAccount.json"});
+    datastoreOrm.addConnection("another", {clientEmail: "", privateKey: ""});
+    const datastore1 = datastoreOrm.getConnection();
+    const datastore2 = datastoreOrm.getConnection("another");
+}
+
 async function entityExamples() {
     const user1 = User.create({id: 1});
     const [user2, requestResponse1] = await User.create({id: 1}).save();
@@ -163,7 +170,7 @@ async function ancestorExamples() {
         .runOnce();
 
     const [taskGroup4] = await TaskGroup.query()
-        .filterKey("=", datastoreOrm.getDatastore().key(["user1", 1, "taskGroup", 1]))
+        .filterKey("=", datastoreOrm.getConnection().key(["user1", 1, "taskGroup", 1]))
         .runOnce();
 
     const key1 = datastoreOrm.createKey([User, 1]);
@@ -204,7 +211,7 @@ async function keyExamples() {
     const key1 = datastoreOrm.createKey([User, 1]);
     const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
     const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
-    const key4 = datastoreOrm.getDatastore().key({namespace: "namespace", path: ["kind1", 1, "kind2", 2]});
+    const key4 = datastoreOrm.getConnection().key({namespace: "namespace", path: ["kind1", 1, "kind2", 2]});
     const key5 = User.create({id: 1}).getKey();
     const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
 }
@@ -450,7 +457,6 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://www.npmjs.com/package/@google-cloud/firestore
 
 # TODO
-- support multiple datastore from different service account
-    - need a default connection for lockHelper to work
-    - what happened for Transaction for different connection? (need to check if connection are the same)
-    - need to add default connection
+- entity helper
+    - create or update
+    - find or update

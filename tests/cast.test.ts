@@ -128,7 +128,6 @@ describe("Cast Test", () => {
 
     it("truncate", async () => {
         const input = {date: (new Date()).toDateString(), id: 123};
-        console.log(input);
         await Cast.create(input as any).save();
     });
 

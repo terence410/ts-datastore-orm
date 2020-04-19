@@ -1,5 +1,7 @@
 import { assert, expect } from "chai";
 import {BaseEntity, Column, Entity} from "../src";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 export class SubClassBase extends BaseEntity {
     @Column({index: true})
@@ -14,6 +16,9 @@ export class SubClass extends SubClassBase {
     @Column()
     public name: string = "";
 }
+
+// before test
+before(beforeCallback);
 
 describe("Subclass Test", () => {
     it("truncate", async () => {

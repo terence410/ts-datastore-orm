@@ -1,6 +1,5 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Batcher} from "./Batcher";
-import {configLoader} from "./configLoader";
 import {datastoreOrm} from "./datastoreOrm";
 import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
@@ -62,7 +61,8 @@ export class BaseEntity {
         }
 
         if (ids.length) {
-            const datastore = datastoreOrm.getDatastore();
+            const entityMeta = datastoreOrm.getEntityMeta(this);
+            const datastore = datastoreOrm.getConnection(entityMeta.connection);
             const keys = datastoreOrm.mapIdsToKeys(this, ids, namespace, ancestorKey);
 
             // friendly error
@@ -104,7 +104,8 @@ export class BaseEntity {
             namespace = argv.namespace;
         }
 
-        const datastore = datastoreOrm.getDatastore();
+        const entityMeta = datastoreOrm.getEntityMeta(this);
+        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const key = datastoreOrm.createKey({namespace, path: [this]});
 
         // friendly error
@@ -329,7 +330,8 @@ export class BaseEntity {
         }
 
         // save
-        const datastore = datastoreOrm.getDatastore();
+        const entityMeta = datastoreOrm.getEntityMeta(this.constructor);
+        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const saveData = this.getSaveData();
 
         // friendly error
@@ -378,11 +380,12 @@ export class BaseEntity {
         }
 
         if (this.isNew) {
-            throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot call merge() on a new Entity..`);
+            throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot call merge() on a new Entity.`);
         }
 
         // save
-        const datastore = datastoreOrm.getDatastore();
+        const entityMeta = datastoreOrm.getEntityMeta(this.constructor);
+        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const mergeData = this.getMergeData(values);
 
         // update the local data first
@@ -416,7 +419,8 @@ export class BaseEntity {
     public async delete(): Promise<[this, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
-        const datastore = datastoreOrm.getDatastore();
+        const entityMeta = datastoreOrm.getEntityMeta(this.constructor);
+        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const key = this.getKey();
 
         // friendly error
@@ -557,13 +561,6 @@ export class BaseEntity {
             // if we already have id and this is now a new entity, block for updating
             if (this._id && this._id !== value && !this._isNew) {
                 throw new DatastoreOrmOperationError(`(${this.constructor.name}) You cannot update id of an existing entity. id (${(this as any).id}).`);
-            }
-
-            if (this._isNew && typeof value === "string") {
-                const config = configLoader.getConfig();
-                if (config.trimId) {
-                    value = value.trim();
-                }
             }
 
             this._id = value;

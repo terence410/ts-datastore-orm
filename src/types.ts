@@ -8,9 +8,14 @@ import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 export type IPropType<TObject, TProp extends keyof TObject> = TObject[TProp];
 export type IConfig = {
     keyFilename: string;
-    friendlyError: boolean;
     namespace: string;
-    trimId: boolean;
+};
+
+export type IConnectionOptions = {
+    keyFilename?: string;
+    clientEmail?: string;
+    privateKey?: string;
+    defaultNamespace?: string;
 };
 
 // endregion
@@ -80,6 +85,7 @@ export interface IEntityMetaBase {
     namespace: string;
     kind: string;
     ancestor: object | null;
+    connection: string;
 }
 export interface IEntityMeta extends  IEntityMetaBase {
     excludeFromIndexes: string[]; // for caching
@@ -142,8 +148,14 @@ export type IArgvColumns<T extends BaseEntity> = Array<Exclude<keyof T, keyof Ba
 export type IArgvValue<T extends BaseEntity, K extends keyof IArgvValues<T>> = IArgvValues<T>[K];
 export type ITransactionOptions = {
     readOnly: boolean;
+    connection: string;
+};
+export type ITransactionDefaultOptions = {
     maxRetry: number;
     delay: number;
+};
+export type ITransactionExecuteOptions = ITransactionDefaultOptions & {
+    readOnly: boolean;
 };
 export type IArgvCreateKey = {
     namespace?: string,

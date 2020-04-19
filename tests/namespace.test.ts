@@ -1,5 +1,7 @@
 import { assert, expect } from "chai";
 import {BaseEntity, Column, Entity, Transaction} from "../src";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 @Entity({namespace: "testing", kind: "namespace"})
 export class Namespace extends BaseEntity {
@@ -20,6 +22,9 @@ export class NamespaceChild extends BaseEntity {
 }
 
 const newNamespace = "testing1";
+
+// before test
+before(beforeCallback);
 
 describe("Namespace Test", () => {
     it("truncate", async () => {

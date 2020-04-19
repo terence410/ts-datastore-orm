@@ -17,8 +17,15 @@ export class Batcher {
 
     public async save(entities: BaseEntity[]): Promise<[number, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
+        // if we have nothing, return
+        if (!entities.length) {
+            return [0, performanceHelper.readResult()];
+        }
 
-        const datastore = datastoreOrm.getDatastore();
+        // preparation
+        this._checkEntities(entities);
+        const entityMeta = datastoreOrm.getEntityMeta(entities[0].constructor);
+        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const insertEntities = entities.filter(x => x.isNew);
         const updateEntities = entities.filter(x => !x.isNew);
         const maxBatch = this._options.maxBatch;
@@ -29,7 +36,7 @@ export class Batcher {
             throw new DatastoreOrmOperationError(`(${readyOnlyEntity.constructor.name}) Entity is read only. id (${(readyOnlyEntity as any).id}).`);
         }
 
-        // insert
+        // mass insert
         if (insertEntities.length) {
             for (let i = 0; i < entities.length; i += maxBatch) {
                 const insertSaveDataList = insertEntities.slice(i, maxBatch).map(x => x.getSaveData());
@@ -64,7 +71,7 @@ export class Batcher {
             }
         }
 
-        // update
+        // mass update
         if (updateEntities.length) {
             for (let i = 0; i < entities.length; i += maxBatch) {
                 const updateSaveDataList = updateEntities.slice(i, maxBatch).map(x => x.getSaveData());
@@ -98,10 +105,18 @@ export class Batcher {
     public async delete(entities: BaseEntity[]): Promise<[number, IRequestResponse]> {
         const performanceHelper = new PerformanceHelper().start();
 
-        // mass delete
-        const datastore = datastoreOrm.getDatastore();
+        // if we have nothing, return
+        if (!entities.length) {
+            return [0, performanceHelper.readResult()];
+        }
+
+        // preparation
+        this._checkEntities(entities);
+        const entityMeta = datastoreOrm.getEntityMeta(entities[0].constructor);
+        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const maxBatch = this._options.maxBatch;
 
+        // mass delete
         for (let i = 0; i < entities.length; i += maxBatch) {
             // friendly error
             const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
@@ -123,5 +138,13 @@ export class Batcher {
         }
 
         return [entities.length, performanceHelper.readResult()];
+    }
+
+    // we make sure entites are all of the same type
+    private _checkEntities(entities: BaseEntity[]) {
+        const set = new Set(entities.map(x => x.constructor));
+        if (set.size > 1) {
+            throw new DatastoreOrmOperationError(`You can only use Batcher for same type of entities only.`);
+        }
     }
 }

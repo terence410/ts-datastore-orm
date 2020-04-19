@@ -9,6 +9,8 @@ import {
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 @Entity({kind: "errorTest"})
 class ErrorTest extends BaseEntity {
@@ -63,6 +65,9 @@ async function assertDatastoreError(callback: () => void, errorMessageRegex: Reg
     }
     assert.isFalse(isSuccess);
 }
+
+// before test
+before(beforeCallback);
 
 describe("Errors Test: Reset", () => {
     it("truncate", async () => {

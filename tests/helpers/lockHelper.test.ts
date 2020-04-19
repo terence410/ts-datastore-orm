@@ -4,6 +4,8 @@ import {DatastoreOrmLockHelperError} from "../../src/errors/DatastoreOrmLockHelp
 import {Lock, LockHelper} from "../../src/helpers/LockHelper";
 import {PerformanceHelper} from "../../src/helpers/PerformanceHelper";
 import {generateRandomString, timeout} from "../../src/utils";
+// @ts-ignore
+import {beforeCallback} from "../share";
 
 @Entity({namespace: "testing", kind: "lockTest"})
 export class LockTest extends BaseEntity {
@@ -13,6 +15,9 @@ export class LockTest extends BaseEntity {
     @Column()
     public total: number = 0;
 }
+
+// before test
+before(beforeCallback);
 
 describe("Lock Test", () => {
     it("truncate", async () => {

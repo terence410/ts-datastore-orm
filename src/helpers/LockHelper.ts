@@ -1,4 +1,4 @@
-import {BaseEntity, Column, Entity, Transaction} from "..";
+import {BaseEntity, Column, DatastoreOrmOperationError, Entity, Transaction} from "..";
 import {DatastoreOrmLockHelperError} from "../errors/DatastoreOrmLockHelperError";
 import {ILockOptions, ILockResponse, IRequestResponse} from "../types";
 import {createMd5, generateRandomString, timeout} from "../utils";
@@ -26,6 +26,7 @@ export class LockHelper {
         Object.assign(defaultOptions, lockOptions);
     }
 
+    /** @internal */
     public static async truncate() {
         return await Lock.truncate();
     }
@@ -46,7 +47,7 @@ export class LockHelper {
 
         } finally {
             // release the lock
-            if (lockHelper.canRelease) {
+            if (lockHelper._canRelease) {
                 await lockHelper.release();
             }
         }
@@ -54,10 +55,10 @@ export class LockHelper {
         return [result, {totalRetry: lockResponse.totalRetry,  executionTime: performanceHelper.read()}];
     }
 
-    public canRelease: boolean = false;
     public readonly options: ILockOptions;
     private readonly _id: string;
     private readonly _clientId: string;
+    private _canRelease: boolean = false; // this mainly to be used in release to make sure a lock is acquired before calling release()
 
     constructor(public readonly key: string, options: Partial<ILockOptions> = {}) {
         this._clientId = generateRandomString(16);
@@ -66,7 +67,7 @@ export class LockHelper {
     }
 
     public async acquire(): Promise<[boolean, ILockResponse]> {
-        if (this.canRelease) {
+        if (this._canRelease) {
             throw new DatastoreOrmLockHelperError(`(LockHelper) You cannot acquire the lock repeatedly. key (${this.key})`);
         }
 
@@ -109,7 +110,13 @@ export class LockHelper {
                     break;
                 }
             } catch (err) {
-                // we ignore all error
+                // do not retry if there is no connection
+                // ignore other error, since we wanted to retry
+                if (err instanceof DatastoreOrmOperationError) {
+                    if (err.message.match(/Datastore connection not exist/)) {
+                        throw  err;
+                    }
+                }
             }
 
             if (!canLock) {
@@ -121,17 +128,17 @@ export class LockHelper {
             throw new DatastoreOrmLockHelperError(`(LockHelper) Failed to acquire the lock. key (${this.key}). retry: ${retry - 1}.`);
         }
 
-        this.canRelease = canLock;
+        this._canRelease = canLock;
         const lockResponse = {totalRetry: retry, executionTime: performanceHelper.read()};
         return [isNewLock, lockResponse];
     }
 
     public async release(): Promise<[boolean, IRequestResponse]> {
-        if (!this.canRelease) {
+        if (!this._canRelease) {
             throw new DatastoreOrmLockHelperError(`(LockHelper) You cannot release a lock without successfully being acquired. key (${this.key})`);
         }
 
-        this.canRelease = false;
+        this._canRelease = false;
         const performanceHelper = new PerformanceHelper().start();
         let isReleased = false;
 

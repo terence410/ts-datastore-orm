@@ -9,11 +9,17 @@ import {Task} from "./entities/Task";
 import {TaskGroup} from "./entities/TaskGroup";
 // @ts-ignore
 import {User} from "./entities/User";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 const batcher = new Batcher();
 
+// before test
+before(beforeCallback);
+
 describe("General Test", () => {
     it("truncate", async () => {
+        const key1 = datastoreOrm.createKey([User, 1]);
         await User.truncate();
         await TaskGroup.truncate();
         await Task.truncate();
@@ -67,11 +73,11 @@ describe("General Test", () => {
     });
 
     it("create entity with empty space", async () => {
-        const guild1 = Guild.create({id: " abc  "});
-        assert.equal(guild1.id, "abc");
+        const guild1 = Guild.create({id: "  abc  "});
+        assert.equal(guild1.id, "  abc  ");
 
         const guild2 = Guild.create({id: "  "});
-        assert.equal(guild2.id, "");
+        assert.equal(guild2.id, "  ");
     });
 
     it("allocate ids", async () => {
@@ -186,7 +192,16 @@ describe("General Test: Batcher", () => {
     });
 });
 
-describe("General Test: Entity Group", () => {
+describe("General Test: Ancestors", () => {
+    it("create key", async () => {
+        const key1 = datastoreOrm.createKey([User, 1]);
+        const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
+        const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
+        const key4 = datastoreOrm.getConnection().key({namespace: "namespace", path: ["kind1", 1, "kind2", 2]});
+        const key5 = User.create({id: 1}).getKey();
+        const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
+    });
+
     it("user task", async () => {
         const user1 = User.create({id: 1000});
         await user1.save();

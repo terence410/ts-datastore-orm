@@ -29,7 +29,8 @@ export class IndexResaveHelper<T extends typeof BaseEntity> {
         }
 
         // we do batch delete to optimize performance
-        const datastore = datastoreOrm.getDatastore();
+        const entityMeta = datastoreOrm.getEntityMeta(this.entityType);
+        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         let totalUpdated = 0;
 
         // friendly error

@@ -1,6 +1,4 @@
 {
   "keyFilename": "datastoreServiceAccount.json",
-  "namespace": "testing",
-  "trimId": true,
-  "friendlyError": true
+  "namespace": "testing"
 }

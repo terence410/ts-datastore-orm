@@ -7,6 +7,8 @@ import {Entity} from "../src/decorators/Entity";
 import {EntityHelper} from "../src/helpers/EntityHelper";
 import {IncrementHelper} from "../src/helpers/IncrementHelper";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
+// @ts-ignore
+import {beforeCallback} from "./share";
 
 @Entity({namespace: "testing", kind: "helper"})
 export class Helper extends BaseEntity {
@@ -28,6 +30,9 @@ export class HelperChild extends BaseEntity {
     @Column({index: true})
     public value: number = 0;
 }
+
+// before test
+before(beforeCallback);
 
 describe("Helper Test: Truncate", () => {
     it("truncate", async () => {

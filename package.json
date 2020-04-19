@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "reflect-metadata": "^0.1.13",
-    "@google-cloud/datastore": "^5.0.3"
+    "@google-cloud/datastore": "^5.1.0"
   },
   "devDependencies": {
     "@types/chai": "^4.2.5",

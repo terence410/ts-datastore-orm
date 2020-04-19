@@ -6,7 +6,7 @@ import {readJsonFile} from "./utils";
 
 class ConfigLoader {
     private _initialized = false;
-    private _config: IConfig = {keyFilename: "", friendlyError: false, namespace: "", trimId: true};
+    private _config: IConfig = {keyFilename: "", namespace: ""};
 
     public getConfig(): IConfig {
         if (!this._initialized) {

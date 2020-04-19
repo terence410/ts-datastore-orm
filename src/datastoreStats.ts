@@ -6,8 +6,8 @@ import {IArgvNamespace, IStats} from "./types";
 class DatastoreStats {
     // region admin methods
 
-    public async getNamespaces(): Promise<string[]> {
-        const datastore = datastoreOrm.getDatastore();
+    public async getNamespaces(connection?: string): Promise<string[]> {
+        const datastore = datastoreOrm.getConnection(connection);
         const query = datastore
             .createQuery(["__namespace__"])
             .select("__key__");
@@ -15,8 +15,8 @@ class DatastoreStats {
         return results.map(x => x[datastore.KEY].name || "");
     }
 
-    public async getKinds(namespace?: string): Promise<string[]> {
-        const datastore = datastoreOrm.getDatastore();
+    public async getKinds(namespace?: string, connection?: string): Promise<string[]> {
+        const datastore = datastoreOrm.getConnection(connection);
         const query = datastore
             .createQuery(namespace || "", ["__kind__"])
             .select("__key__");
@@ -26,12 +26,12 @@ class DatastoreStats {
 
     public async getEntityProperties(entityType: object) {
         const entityMeta = datastoreOrm.getEntityMeta(entityType);
-        return this.getProperties({namespace: entityMeta.namespace, kind: entityMeta.kind});
+        return this.getProperties({namespace: entityMeta.namespace, kind: entityMeta.kind}, entityMeta.connection);
     }
 
-    public async getTotal(options: IArgvNamespace = {}): Promise<IStats | undefined> {
+    public async getTotal(options: IArgvNamespace = {}, connection?: string): Promise<IStats | undefined> {
         if (options.namespace) {
-            const results = await this.getStats({namespace: options.namespace, stats: namespaceStats.total});
+            const results = await this.getStats({namespace: options.namespace, stats: namespaceStats.total}, connection);
             return results.length ? results[0] as IStats : undefined;
 
         } else {
@@ -42,12 +42,12 @@ class DatastoreStats {
 
     public async getEntityTotal(entityType: object): Promise<IStats | undefined> {
         const entityMeta = datastoreOrm.getEntityMeta(entityType);
-        const results = await this.getStats({namespace: entityMeta.namespace, kind: entityMeta.kind, stats: namespaceStats.kind});
+        const results = await this.getStats({namespace: entityMeta.namespace, kind: entityMeta.kind, stats: namespaceStats.kind}, entityMeta.connection);
         return results.length ? results[0] as IStats : undefined;
     }
 
-    public async getStats(options: {namespace?: string, kind?: string, stats: string}) {
-        const datastore = datastoreOrm.getDatastore();
+    public async getStats(options: {namespace?: string, kind?: string, stats: string}, connection?: string) {
+        const datastore = datastoreOrm.getConnection(connection);
 
         // prepare query
         const query = datastore .createQuery( options.namespace as string, [options.stats]);
@@ -64,8 +64,8 @@ class DatastoreStats {
 
     }
 
-    public async getProperties(options: {namespace: string, kind: string}) {
-        const datastore = datastoreOrm.getDatastore();
+    public async getProperties(options: {namespace: string, kind: string}, connection?: string) {
+        const datastore = datastoreOrm.getConnection(connection);
 
         const key = datastore.key(["__kind__", options.kind]);
         key.namespace = options.namespace;
