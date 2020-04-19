@@ -88,7 +88,7 @@ describe("Namespace Test", () => {
                 transaction.save(user1);
                 return ids1;
             } else {
-                transaction.rollback();
+                await transaction.rollback();
             }
         });
         assert.isTrue(transactionResponse.hasCommitted);

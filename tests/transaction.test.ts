@@ -3,7 +3,6 @@ import {DatastoreOrmDatastoreError, Transaction} from "../src";
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
-import {errorCodes} from "../src/enums/errorCodes";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {timeout} from "../src/utils";
 
@@ -60,7 +59,7 @@ describe("Transaction Test", () => {
                 transaction.delete(user2a);
                 return child2;
             } else {
-                transaction.rollback();
+                await transaction.rollback();
             }
         }, {maxRetry: 2});
 
@@ -113,7 +112,7 @@ describe("Transaction Test", () => {
 
     it("rollback transaction", async () => {
         const [_, transactionResponse] = await Transaction.execute(async transaction => {
-            transaction.rollback();
+            await transaction.rollback();
         });
         assert.isFalse(transactionResponse.hasCommitted);
     });
@@ -140,7 +139,7 @@ describe("Transaction Test", () => {
                     user2.name = "hello";
                     transaction.save(user2);
                 } else {
-                    transaction.rollback();
+                    await transaction.rollback();
                 }
             }, {maxRetry});
 

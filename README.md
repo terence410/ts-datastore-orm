@@ -254,7 +254,7 @@ async function queryExamples() {
 Transaction.execute is simple and elegant way to play with Transaction easily. You don't have to worry about transaction rollback and spot out precisely the type of errors being throw.  
 ```typescript
 async function transaction1Examples() {
-    Transaction.setDefaultOptions({maxRetry: 0, delay: 50, quickRollback: true, readOnly: false});
+    Transaction.setDefaultOptions({maxRetry: 0, delay: 50, readOnly: false});
     
     try {
         const [taskGroup1, transactionResponse1] = await Transaction.execute(async transaction => {
@@ -268,7 +268,7 @@ async function transaction1Examples() {
                 transaction.save(taskGroup2);
                 return taskGroup2;
             } else {
-                transaction.rollback(); // not necessary to await for it for better performance
+                await transaction.rollback(); 
             }
         }, {maxRetry: 5});
 
@@ -390,11 +390,10 @@ import {LockHelper} from "ts-datastore-orm";
 
 async function lockHelperExamples() {
     const key = "test1";
-    LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, quickRelease: true, throwReleaseError: false});
+    LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, throwReleaseError: false});
     // expire: how long the lock will be expired
     // maxRetry: the number of retry if it failed to acquire an lock
     // delay: the delay in ms waiting for a retry
-    // quickRelease: release the lock in background without waiting the response from server (for performance optimization)
     // throwReleaseError: whether you wanted to care any release error
 
     const lockHelper1 = new LockHelper(key, {expire: 1000, maxRetry: 5, delay: 100});
@@ -415,7 +414,7 @@ async function lockHelperExamples() {
     try {
         const [resultString, response] = await LockHelper.execute(key, async (lockHelper2) => {
             return "value";
-        }, {maxRetry: 2, quickRelease: true});
+        }, {maxRetry: 2});
     } catch (err) {
         //
     }
@@ -452,4 +451,6 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 
 # TODO
 - support multiple datastore from different service account
-- make truncate harder to avoid mistake
+    - need a default connection for lockHelper to work
+    - what happened for Transaction for different connection? (need to check if connection are the same)
+    - need to add default connection

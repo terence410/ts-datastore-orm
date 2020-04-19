@@ -13,6 +13,7 @@
         "interface-over-type-literal": false,
         "object-literal-sort-keys": false,
         "max-line-length": [200],
+        "no-floating-promises": true,
         "no-bitwise": false,
         "variable-name": [true, "ban-keywords", "check-format", "allow-leading-underscore"]
     },

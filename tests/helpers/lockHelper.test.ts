@@ -1,6 +1,6 @@
 import { assert, expect } from "chai";
 import {BaseEntity, Column, Entity} from "../../src";
-import {DatastoreOrmLockError} from "../../src/errors/DatastoreOrmLockError";
+import {DatastoreOrmLockHelperError} from "../../src/errors/DatastoreOrmLockHelperError";
 import {Lock, LockHelper} from "../../src/helpers/LockHelper";
 import {PerformanceHelper} from "../../src/helpers/PerformanceHelper";
 import {generateRandomString, timeout} from "../../src/utils";
@@ -24,7 +24,6 @@ describe("Lock Test", () => {
             delay: 50,
             maxRetry: 1,
             expire: 5000,
-            quickRelease: false,
             throwReleaseError: false,
         });
     });
@@ -42,7 +41,7 @@ describe("Lock Test", () => {
             await lockHelper2.acquire();
             assert.isTrue(false);
         } catch (err) {
-            assert.isTrue(err instanceof DatastoreOrmLockError);
+            assert.isTrue(err instanceof DatastoreOrmLockHelperError);
             assert.match(err.message, /Failed to acquire the lock/);
         }
 
@@ -96,7 +95,7 @@ describe("Lock Test", () => {
         const output = 5;
         const [result] = await LockHelper.execute(key, async (lock) => {
             return output;
-        }, {quickRelease: false});
+        });
         assert.equal(result, output);
 
         // acquire a new lock
@@ -109,7 +108,7 @@ describe("Lock Test", () => {
             const randomKey = generateRandomString(8);
             return LockHelper.execute(randomKey, async (lock) => {
                 return true;
-            }, {quickRelease: true});
+            });
         };
 
         let total = 10;
@@ -164,7 +163,7 @@ describe("Lock Test", () => {
             await lockHelper.release();
             assert.isTrue(false);
         } catch (err) {
-            assert.isTrue(err instanceof DatastoreOrmLockError);
+            assert.isTrue(err instanceof DatastoreOrmLockHelperError);
             assert.match(err.message, /You cannot release a lock without successfully being acquired./);
         }
     });
@@ -176,7 +175,7 @@ describe("Lock Test", () => {
         try {
             const [result] = await LockHelper.execute(key, async (lock) => {
                 throw error1;
-            }, {quickRelease: false});
+            });
             assert.isTrue(false);
         } catch (err) {
             assert.equal(err, error1);
@@ -198,7 +197,7 @@ describe("Lock Test", () => {
             });
             assert.isTrue(false);
         } catch (err) {
-            assert.isTrue(err instanceof DatastoreOrmLockError);
+            assert.isTrue(err instanceof DatastoreOrmLockHelperError);
             assert.match(err.message, /Failed to acquire the lock./);
         }
         // release the lock
@@ -214,7 +213,7 @@ describe("Lock Test", () => {
             await lockHelper.acquire();
             assert.isTrue(false);
         } catch (err) {
-            assert.isTrue(err instanceof DatastoreOrmLockError);
+            assert.isTrue(err instanceof DatastoreOrmLockHelperError);
             assert.match(err.message, /You cannot acquire the lock repeatedly./);
         }
 

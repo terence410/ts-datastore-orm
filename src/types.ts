@@ -141,7 +141,6 @@ export type IArgvColumn<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntit
 export type IArgvColumns<T extends BaseEntity> = Array<Exclude<keyof T, keyof BaseEntity>>;
 export type IArgvValue<T extends BaseEntity, K extends keyof IArgvValues<T>> = IArgvValues<T>[K];
 export type ITransactionOptions = {
-    quickRollback: boolean;
     readOnly: boolean;
     maxRetry: number;
     delay: number;
@@ -176,7 +175,6 @@ export type ILockOptions = {
     expire: number;
     maxRetry: number;
     delay: number;
-    quickRelease: boolean;
     throwReleaseError: boolean;
 };
 

@@ -6,7 +6,7 @@ import {
     Column,
     datastoreOrm,
     DatastoreOrmDatastoreError, DatastoreOrmDecoratorError,
-    DatastoreOrmError, DatastoreOrmLockError, DatastoreOrmOperationError,
+    DatastoreOrmError, DatastoreOrmLockHelperError, DatastoreOrmOperationError,
     DescendentHelper,
     Entity,
     IncrementHelper, IndexResaveHelper,
@@ -184,7 +184,7 @@ async function queryExamples() {
 }
 
 async function transaction1Examples() {
-    Transaction.setDefaultOptions({maxRetry: 0, delay: 50, quickRollback: true, readOnly: false});
+    Transaction.setDefaultOptions({maxRetry: 0, delay: 50, readOnly: false});
     
     try {
         const [taskGroup1, transactionResponse1] = await Transaction.execute(async transaction => {
@@ -198,7 +198,7 @@ async function transaction1Examples() {
                 transaction.save(taskGroup2);
                 return taskGroup2;
             } else {
-                transaction.rollback(); // not necessary to await for it for better performance
+                await transaction.rollback();
             }
         }, {maxRetry: 5});
 
@@ -290,11 +290,10 @@ async function indexResaveHelperExamples() {
 
 async function lockHelperExamples() {
     const key = "test1";
-    LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, quickRelease: true, throwReleaseError: false});
+    LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, throwReleaseError: false});
     // expire: how long the lock will be expired
     // maxRetry: the number of retry if it failed to acquire an lock
     // delay: the delay in ms waiting for a retry
-    // quickRelease: release the lock in background without waiting the response from server (for performance optimization)
     // throwReleaseError: whether you wanted to care any release error
 
     const lockHelper1 = new LockHelper(key, {expire: 1000, maxRetry: 5, delay: 100});
@@ -305,7 +304,7 @@ async function lockHelperExamples() {
         // isReleased = true // an lock is in released state (whether you released it or it is expired)
         // isReleased = false // an lock still exist, in the case that your lock is expired and acquired by others
     } catch (err) {
-        if (err instanceof DatastoreOrmLockError) {
+        if (err instanceof DatastoreOrmLockHelperError) {
             // if you failed to acquire the lock
         } else {
             // other logic error
@@ -315,7 +314,7 @@ async function lockHelperExamples() {
     try {
         const [resultString, response] = await LockHelper.execute(key, async (lockHelper2) => {
             return "value";
-        }, {maxRetry: 2, quickRelease: true});
+        }, {maxRetry: 2});
     } catch (err) {
         //
     }

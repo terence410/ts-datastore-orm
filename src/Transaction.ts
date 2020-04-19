@@ -12,7 +12,7 @@ import {
     IArgvAllocateIds,
     IArgvFind,
     IArgvFindMany,
-    IArgvId, IArgvValues,
+    IArgvId,
     IKey,
     IRequestResponse,
     ITransactionOptions,
@@ -26,7 +26,7 @@ import {
 // above should not use await (it probably will be done by batch by transaction)
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const defaultOptions: ITransactionOptions = {delay: 50, maxRetry: 0, quickRollback: true, readOnly: false};
+const defaultOptions: ITransactionOptions = {delay: 50, maxRetry: 0, readOnly: false};
 
 export class Transaction {
     public static setDefaultOptions(lockOptions: Partial<ITransactionOptions> = {}) {
@@ -50,7 +50,6 @@ export class Transaction {
 
         // options
         const delay = options.delay || defaultOptions.delay;
-        const quickRollback = options.quickRollback !== undefined ? options.quickRollback : defaultOptions.quickRollback;
         const maxRetry = Math.max(0, options.maxRetry || defaultOptions.maxRetry);
 
         // friendly error
@@ -81,13 +80,8 @@ export class Transaction {
 
             } catch (err) {
                 // if we don't rollback, it will be faster
-                if (quickRollback) {
-                    transaction.rollback();
+                await transaction.rollback();
 
-                } else {
-                    await transaction.rollback();
-                }
-                
                 // retry transaction only if aborted
                 if (err.code === errorCodes.ABORTED) {
                     if (retry < maxRetry) {

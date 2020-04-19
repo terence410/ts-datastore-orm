@@ -11,7 +11,7 @@ import {stats} from "./enums/stats";
 import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 import {DatastoreOrmDecoratorError} from "./errors/DatastoreOrmDecoratorError";
 import {DatastoreOrmError} from "./errors/DatastoreOrmError";
-import {DatastoreOrmLockError} from "./errors/DatastoreOrmLockError";
+import {DatastoreOrmLockHelperError} from "./errors/DatastoreOrmLockHelperError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {DescendentHelper} from "./helpers/DescendentHelper";
 import {IncrementHelper} from "./helpers/IncrementHelper";
@@ -44,7 +44,7 @@ export {
     // errors
     DatastoreOrmDecoratorError,
     DatastoreOrmOperationError,
-    DatastoreOrmLockError,
+    DatastoreOrmLockHelperError,
     DatastoreOrmDatastoreError,
     DatastoreOrmError,
 

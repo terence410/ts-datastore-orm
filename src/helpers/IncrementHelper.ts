@@ -23,7 +23,7 @@ export class IncrementHelper<R extends typeof BaseEntity, T extends InstanceType
 
                 return newValue;
             } else {
-                transaction.rollback();
+                await transaction.rollback();
             }
         }, options);
 

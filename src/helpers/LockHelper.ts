@@ -1,10 +1,10 @@
-import {BaseEntity, Column, datastoreOrm, Entity, Transaction} from "..";
-import {DatastoreOrmLockError} from "../errors/DatastoreOrmLockError";
+import {BaseEntity, Column, Entity, Transaction} from "..";
+import {DatastoreOrmLockHelperError} from "../errors/DatastoreOrmLockHelperError";
 import {ILockOptions, ILockResponse, IRequestResponse} from "../types";
 import {createMd5, generateRandomString, timeout} from "../utils";
 import {PerformanceHelper} from "./PerformanceHelper";
 
-const defaultOptions: ILockOptions = {expire: 5000, delay: 50, maxRetry: 0, quickRelease: true, throwReleaseError: false};
+const defaultOptions: ILockOptions = {expire: 5000, delay: 50, maxRetry: 0, throwReleaseError: false};
 
 @Entity({namespace: "datastoreorm", kind: "lock"})
 export class Lock extends BaseEntity {
@@ -47,11 +47,7 @@ export class LockHelper {
         } finally {
             // release the lock
             if (lockHelper.canRelease) {
-                if (lockHelper.options.quickRelease) {
-                    lockHelper.release();
-                } else {
-                    await lockHelper.release();
-                }
+                await lockHelper.release();
             }
         }
 
@@ -71,7 +67,7 @@ export class LockHelper {
 
     public async acquire(): Promise<[boolean, ILockResponse]> {
         if (this.canRelease) {
-            throw new DatastoreOrmLockError(`(LockHelper) You cannot acquire the lock repeatedly. key (${this.key})`);
+            throw new DatastoreOrmLockHelperError(`(LockHelper) You cannot acquire the lock repeatedly. key (${this.key})`);
         }
 
         const performanceHelper = new PerformanceHelper().start();
@@ -101,8 +97,9 @@ export class LockHelper {
 
                     }
 
-                    // we cancel immediately since we don't have to save, this can skip commit call
-                    transaction.rollback();
+                    // there is a lock not expired yet
+                    // quick rollback
+                    await transaction.rollback();
                 });
 
                 // we successfully acquired the lock
@@ -121,7 +118,7 @@ export class LockHelper {
         } while (retry++ < this.options.maxRetry);
 
         if (!canLock) {
-            throw new DatastoreOrmLockError(`(LockHelper) Failed to acquire the lock. key (${this.key}). retry: ${retry - 1}.`);
+            throw new DatastoreOrmLockHelperError(`(LockHelper) Failed to acquire the lock. key (${this.key}). retry: ${retry - 1}.`);
         }
 
         this.canRelease = canLock;
@@ -131,7 +128,7 @@ export class LockHelper {
 
     public async release(): Promise<[boolean, IRequestResponse]> {
         if (!this.canRelease) {
-            throw new DatastoreOrmLockError(`(LockHelper) You cannot release a lock without successfully being acquired. key (${this.key})`);
+            throw new DatastoreOrmLockHelperError(`(LockHelper) You cannot release a lock without successfully being acquired. key (${this.key})`);
         }
 
         this.canRelease = false;
@@ -149,18 +146,14 @@ export class LockHelper {
                         transaction.delete(lock);
                         return true;
 
-                    } else if (now > lock.expiredAt) {
-                        isReleased1 = true;
-
                     } else {
-                        isReleased1 = false;
-
+                        isReleased1 = now > lock.expiredAt;
                     }
                 } else {
                     isReleased1 = true;
                 }
 
-                transaction.rollback();
+                await transaction.rollback();
                 return isReleased1;
             });
         } catch (err) {
