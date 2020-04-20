@@ -34,29 +34,26 @@ You can also compare the native performance of [nodejs-datastore](https://github
   - set "experimentalDecorators" to true. 
   - set "emitDecoratorMetadata" to true. 
   - set "strictNullChecks" to true.
-- Create ./datastoreorm.default.json in the project root folder.
-```json5
-{
-  "keyFilename": "datastoreServiceAccount.json",
-  "friendlyError": true, // for easier debugging of some promise error, enable this if you found some error log hard to trace
-  "namespace": "namespace" // default namespace for all the entities, leave it blank will use default namespace
-}
-```
 - Generate datastore-service-account.json from Goolge APIs. (Details won't cover here)
-
-# Environment Variable
-- export NODE_ENV=production
-  - it will try to load the config file "./datastoreorm.production.json" first
-  - if the file is not found, it will load the config file "./datastoreorm.default.json"
-- export DATASTOREORM_CONFIG_PATH=./path/custom.json
-  - it will try to load the config file "./path/custom.json"
 
 # Quick Start
 ```typescript
-import {BaseEntity, Column, Entity} from "ts-datastore-orm";
+import {BaseEntity, Column, Entity, datastoreOrm} from "ts-datastore-orm";
 
-@Entity({kind: "user"})
+datastoreOrm.addConnection("default", {keyFilename: "serviceAccount.json"});
+datastoreOrm.addConnection("production", {clientEmail: "", privateKey: ""});
+
+@Entity()
 export class User extends BaseEntity {
+    @Column({generateId: true})
+    public id: number = 0;
+    
+    @Column({index: true})
+    public total: number = 0;
+}
+
+@Entity({kind: "User", connection: "production"})
+export class User1 extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
     
@@ -77,7 +74,7 @@ import {BaseEntity, Batcher, Column, CompositeIndex, datastoreOrm, Entity, Trans
 
 @CompositeIndex({id: "desc"})
 @CompositeIndex({string: "asc", ["object.name"]: "asc"})
-@Entity({namespace: "testing", kind: "user"})
+@Entity({namespace: "testing", kind: "User"})
 export class User extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -107,7 +104,7 @@ export class User extends BaseEntity {
     public null: null = null;
 }
 
-@Entity({namespace: "testing", kind: "taskGroup", ancestor: User})
+@Entity({namespace: "testing", kind: "TaskGroup", ancestor: User})
 export class TaskGroup extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -121,9 +118,9 @@ export class TaskGroup extends BaseEntity {
 
 async function init() {
     datastoreOrm.addConnection("default", {keyFilename: "serviceAccount.json"});
-    datastoreOrm.addConnection("another", {clientEmail: "", privateKey: ""});
+    datastoreOrm.addConnection("production", {clientEmail: "", privateKey: ""});
     const datastore1 = datastoreOrm.getConnection();
-    const datastore2 = datastoreOrm.getConnection("another");
+    const datastore2 = datastoreOrm.getConnection("production");
 }
 
 async function entityExamples() {
@@ -455,8 +452,3 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://cloud.google.com/datastore/docs/
 - https://www.npmjs.com/package/@google-cloud/datastore
 - https://www.npmjs.com/package/@google-cloud/firestore
-
-# TODO
-- entity helper
-    - create or update
-    - find or update

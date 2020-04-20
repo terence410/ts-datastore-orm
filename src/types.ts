@@ -6,10 +6,6 @@ import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
 // region basic
 
 export type IPropType<TObject, TProp extends keyof TObject> = TObject[TProp];
-export type IConfig = {
-    keyFilename: string;
-    namespace: string;
-};
 
 export type IConnectionOptions = {
     keyFilename?: string;
@@ -141,6 +137,7 @@ export interface IEvents<T> {
 // endregion
 
 // region arguments
+
 export type IArgvId = string | number | IKey;
 export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]: T[P]};
 export type IArgvColumn<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntity>;

@@ -17,7 +17,7 @@ import {
 } from "./types";
 
 class DatastoreOrm {
-    public friendlyError: boolean = false;
+    public friendlyError: boolean = true;
     private _entityMetas = new Map<object, IEntityMeta>();
     private _entityCompositeIndexes = new Map<object, IEntityCompositeIndexes>();
     private _entityColumns = new Map<object, {[key: string]: IEntityColumn}>();
@@ -62,7 +62,7 @@ class DatastoreOrm {
             return this._datastoreMap.get(connection) as Datastore.Datastore;
         }
 
-        throw new DatastoreOrmOperationError(`Datastore connection not exist for ${connection}. ` +
+        throw new DatastoreOrmOperationError(`Datastore connection not exist for "${connection}". ` +
             `Please add a new connection by: datastoreOrm.addConnection("${connection}", {keyFilename: "serviceAccount.json"});`);
     }
 
@@ -186,15 +186,15 @@ class DatastoreOrm {
     }
 
     /** @internal */
-    public getEntityByKind(kind: string): object | undefined {
-        return this._kindToEntity.get(kind);
+    public getEntityByKind(connection: string, kind: string): object | undefined {
+        return this._kindToEntity.get(`${connection}/${kind}`);
     }
 
     /** @internal */
     public addEntity(target: object, entityMeta: IEntityMeta) {
         if (!this._entityMetas.has(target)) {
             this._entityMetas.set(target, entityMeta);
-            this._kindToEntity.set(entityMeta.kind, target);
+            this._kindToEntity.set(`${entityMeta.connection}/${entityMeta.kind}`, target);
         }
 
         // also add composite indexes default if not exist

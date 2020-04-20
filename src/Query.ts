@@ -74,12 +74,13 @@ export class Query<T extends typeof BaseEntity> {
         return this;
     }
 
-    public setAncestor<R extends BaseEntity>(entity: R) {
-        const ancestorKey = entity.getKey();
+    public setAncestor<R extends BaseEntity>(ancestorEntity: R) {
+        const ancestorKey = ancestorEntity.getKey();
 
         // check namespace
         if (ancestorKey.namespace !== this._namespace) {
-            throw new DatastoreOrmOperationError(`(${this.entityType.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the query namespace (${this._namespace}).`);
+            throw new DatastoreOrmOperationError(
+                `(${this.entityType.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the query namespace (${this._namespace}).`);
         }
 
         this._ancestor = ancestorKey;

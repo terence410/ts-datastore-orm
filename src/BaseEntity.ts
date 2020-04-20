@@ -451,7 +451,7 @@ export class BaseEntity {
         while (key.parent) {
             key = key.parent;
             if (key && key.kind === ancestorEntityMeta.kind) {
-                const ancestorEntityType = datastoreOrm.getEntityByKind(ancestorEntityMeta.kind);
+                const ancestorEntityType = datastoreOrm.getEntityByKind(ancestorEntityMeta.connection, ancestorEntityMeta.kind);
                 return await (ancestorEntityType as T)
                     .query()
                     .setNamespace(this.getNamespace())

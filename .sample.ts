@@ -15,7 +15,7 @@ import {
 
 @CompositeIndex({id: "desc"})
 @CompositeIndex({string: "asc", ["object.name"]: "asc"})
-@Entity({namespace: "testing", kind: "user"})
+@Entity({namespace: "testing", kind: "User"})
 export class User extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;
@@ -45,7 +45,7 @@ export class User extends BaseEntity {
     public null: null = null;
 }
 
-@Entity({namespace: "testing", kind: "taskGroup", ancestor: User})
+@Entity({namespace: "testing", kind: "TaskGroup", ancestor: User})
 export class TaskGroup extends BaseEntity {
     @Column({generateId: true})
     public id: number = 0;

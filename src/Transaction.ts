@@ -5,6 +5,7 @@ import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
 import {errorCodes} from "./enums/errorCodes";
 import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Query} from "./Query";
@@ -66,7 +67,7 @@ export class Transaction {
                 result = await callback(transaction);
 
                 // check if user has cancelled the commit
-                if (!transaction.skipCommit) {
+                if (!transaction.hasRollback) {
                     await transaction.commit();
                     transactionResponse.hasCommitted = true;
                 }
@@ -115,10 +116,14 @@ export class Transaction {
     public deletedEntities: BaseEntity[] = [];
 
     // internal handling for rollback
-    public skipCommit: boolean = false;
+    public hasRollback: boolean = false;
+    private _connection: string;
+    private _hasCompleted: boolean = false;
+    private _hasStarted: boolean = false;
 
     constructor(options: Partial<ITransactionOptions> = {}) {
-        const datastore = datastoreOrm.getConnection(options.connection);
+        this._connection = options.connection || "default";
+        const datastore = datastoreOrm.getConnection(this._connection);
         this.datastoreTransaction = datastore.transaction({readOnly: options.readOnly});
     }
 
@@ -126,12 +131,16 @@ export class Transaction {
 
     // start transaction
     public async run() {
+        if (this._hasCompleted) {
+            throw new DatastoreOrmOperationError(`You cannot rerun a transaction.`);
+        }
+
         // rest the data (in case the transaction is reused)
+        this._hasStarted = true;
         this.createdKeys = [];
         this.createdEntities = [];
         this.updatedEntities = [];
         this.deletedEntities = [];
-        this.skipCommit = false;
 
         // friendly error
         const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
@@ -150,6 +159,8 @@ export class Transaction {
     }
 
     public async commit(): Promise<[IRequestResponse]> {
+        this._hasCompleted = true;
+
         const performanceHelper = new PerformanceHelper().start();
 
         // friendly error
@@ -172,18 +183,22 @@ export class Transaction {
         }
     }
 
-    public async rollback() {
+    public async rollback(): Promise<[IRequestResponse]> {
         // reset data
         this.createdKeys = [];
         this.createdEntities = [];
         this.updatedEntities = [];
         this.deletedEntities = [];
-        this.skipCommit = true;
+        this.hasRollback = true;
+        this._hasCompleted = true;
+
+        const performanceHelper = new PerformanceHelper().start();
 
         // friendly error
         const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
         try {
             await this.datastoreTransaction.rollback();
+            return [performanceHelper.readResult()];
 
         } catch (err) {
             const error = new DatastoreOrmDatastoreError(`Transaction Rollback Error. Error: ${err.message}.`,
@@ -213,6 +228,9 @@ export class Transaction {
             id = (argv as IArgvFind).id;
         }
 
+        // validate
+        this._validateEntity(entityType);
+
         const [entities, requestResponse] = await this.findMany(entityType, {namespace, ancestor, ids: [id]});
         return [entities.length ? entities[0] : undefined, requestResponse];
     }
@@ -229,6 +247,9 @@ export class Transaction {
             ancestorKey = argv.ancestor ? argv.ancestor.getKey() : undefined;
             ids = argv.ids;
         }
+
+        // validate
+        this._validateEntity(entityType);
 
         // friendly error
         if (ids.length) {
@@ -267,6 +288,10 @@ export class Transaction {
             entities = [entities];
         }
 
+        // validate
+        this._validateEntities(entities);
+
+        // pass to transaction
         const insertEntities = entities.filter(x => x.isNew);
         const updateEntities = entities.filter(x => !x.isNew);
 
@@ -296,6 +321,10 @@ export class Transaction {
             entities = [entities];
         }
 
+        // validate
+        this._validateEntities(entities);
+
+        // pass to transaction
         const keys = entities.map(x => x.getKey());
         this.datastoreTransaction.delete(keys);
 
@@ -339,6 +368,23 @@ export class Transaction {
     // endregion
 
     // region private methods
+    private _validateEntity<T extends typeof BaseEntity>(entityType: T) {
+        if (!this._hasStarted) {
+            throw new DatastoreOrmOperationError(`Please call await transaction.run().`);
+        }
+
+        const entityMeta = datastoreOrm.getEntityMeta(entityType);
+        if (entityMeta.connection !== this._connection) {
+            throw new DatastoreOrmOperationError(
+                `(${entityType.name}) This entity is using a connection "${entityMeta.connection}" while the transaction is connected to "${this._connection}"`);
+        }
+    }
+
+    private _validateEntities<T extends BaseEntity, G extends typeof BaseEntity>(entities: T[]) {
+        for (const entity of entities) {
+            this._validateEntity(entity.constructor as G);
+        }
+    }
 
     private _processCreatedKeys() {
         for (let i = 0; i < this.createdKeys.length; i++) {

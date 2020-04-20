@@ -9,16 +9,24 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         let newEntityMeta: IEntityMeta = {
             connection: "default",
             namespace: entityMeta.namespace || "",
-            kind: "",
+            kind: (target as any).name,
             ancestor: null,
             excludeFromIndexes: [],
         };
         newEntityMeta = Object.assign(newEntityMeta, entityMeta);
 
         // check if has existing kind
-        const existEntityType = datastoreOrm.getEntityByKind(newEntityMeta.kind);
+        const existEntityType = datastoreOrm.getEntityByKind(newEntityMeta.connection, newEntityMeta.kind);
         if (existEntityType) {
             throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity with kind (${newEntityMeta.kind}) is already used by another Entity (${(existEntityType as any).name}).`);
+        }
+
+        // check ancestor are having the same connection
+        if (newEntityMeta.ancestor) {
+            const ancestorEntityMeta = datastoreOrm.getEntityMeta(newEntityMeta.ancestor);
+            if (ancestorEntityMeta.connection !== newEntityMeta.connection) {
+                throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity's connection "${newEntityMeta.connection}" is different with ancestor's connection: "${ancestorEntityMeta.connection}".`);
+            }
         }
 
         // it has a subclass, add all it's column

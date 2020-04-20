@@ -1,6 +1,6 @@
 import { assert, expect } from "chai";
 import {
-    Batcher,
+    Batcher, datastoreOrm,
     DatastoreOrmDatastoreError,
     DatastoreOrmDecoratorError,
     DatastoreOrmOperationError,
@@ -30,44 +30,56 @@ class ErrorTestChild extends BaseEntity {
     public id: number = 0;
 }
 
+@Entity({kind: "errorTest", connection: "testing"})
+class SameErrorTest extends BaseEntity {
+    @Column()
+    public id: number = 0;
+}
+
+@Entity({kind: "notExist", connection: "notExist"})
+class NotExist extends BaseEntity {
+    @Column()
+    public id: number = 0;
+}
+
 async function assertDecoratorError(callback: () => void, errorMessageRegex: RegExp) {
-    let isSuccess = false;
+    let message = "";
     try {
         await callback();
-        isSuccess = true;
     } catch (err) {
         assert.isTrue(err instanceof DatastoreOrmDecoratorError);
-        assert.match(err.message, errorMessageRegex);
+        message = err.message;
     }
-    assert.isFalse(isSuccess);
+    assert.match(message, errorMessageRegex);
 }
 
 async function assertOperationError(callback: () => void, errorMessageRegex: RegExp) {
-    let isSuccess = false;
+    let message = "";
     try {
         await callback();
-        isSuccess = true;
     } catch (err) {
         assert.isTrue(err instanceof DatastoreOrmOperationError);
-        assert.match(err.message, errorMessageRegex);
+        message = err.message;
     }
-    assert.isFalse(isSuccess);
+    assert.match(message, errorMessageRegex);
 }
 
 async function assertDatastoreError(callback: () => void, errorMessageRegex: RegExp) {
-    let isSuccess = false;
+    let message = "";
     try {
         await callback();
-        isSuccess = true;
     } catch (err) {
         assert.isTrue(err instanceof DatastoreOrmDatastoreError);
-        assert.match(err.message, errorMessageRegex);
+        message = err.message;
     }
-    assert.isFalse(isSuccess);
+    assert.match(message, errorMessageRegex);
 }
 
 // before test
 before(beforeCallback);
+before(() => {
+    datastoreOrm.addConnection("testing", {keyFilename: "./datastoreServiceAccount.json"});
+});
 
 describe("Errors Test: Reset", () => {
     it("truncate", async () => {
@@ -88,7 +100,7 @@ describe("Errors Test: Decorators", () => {
 
     it("Entity without kind", async () => {
         await assertDecoratorError(() => {
-            @Entity()
+            @Entity({kind: ""})
             class ErrorTest1 extends BaseEntity {
                 @Column()
                 public id: number = 0;
@@ -134,6 +146,22 @@ describe("Errors Test: Decorators", () => {
                 public id: string = "";
             }
         }, /Entity with kind.*is already used/);
+    });
+
+    it("Entity with same kind", async () => {
+        await assertDecoratorError(() => {
+            @Entity({connection: "connection1"})
+            class ErrorTest3 extends BaseEntity {
+                @Column()
+                public id: string = "";
+            }
+
+            @Entity({connection: "connection2", ancestor: ErrorTest3})
+            class ErrorTest4 extends BaseEntity {
+                @Column()
+                public id: string = "";
+            }
+        }, /Entity's connection.*is different with/);
     });
 });
 
@@ -299,7 +327,7 @@ describe("Errors Test: Datastore", () => {
         }, /Allocate Ids Error/);
     });
 
-    it("Batch save error", async () => {
+    it("Batcher save error", async () => {
         await assertDatastoreError(async () => {
             const batcher = new Batcher();
             const entity1 = ErrorTest.create({id: -1}).setNamespace("not exist");
@@ -307,7 +335,16 @@ describe("Errors Test: Datastore", () => {
         }, /Batcher Save Error for insert/);
     });
 
-    it("Batch delete error", async () => {
+    it("Batcher save error", async () => {
+        await assertOperationError(async () => {
+            const batcher = new Batcher();
+            const entity1 = ErrorTest.create({id: 1});
+            const entity2 = SameErrorTest.create({id: 1});
+            await batcher.save([entity1, entity2]);
+        }, /You can only use Batcher for same type of entities only./);
+    });
+
+    it("Batcher delete error", async () => {
         await assertDatastoreError(async () => {
             const batcher = new Batcher();
             const entity1 = ErrorTest.create({id: -1}).setNamespace("not exist");
@@ -330,6 +367,12 @@ describe("Errors Test: Datastore", () => {
                 resolve();
             });
         });
+    });
+
+    it("Entity without connection", async () => {
+        await assertOperationError(async () => {
+            const [entity1] = await NotExist.create().save();
+        }, /Datastore connection not exist/);
     });
 
     it("Transaction find error", async () => {
@@ -376,4 +419,43 @@ describe("Errors Test: Datastore", () => {
             await transaction2.commit();
         }, /Transaction Commit Error/);
     });
+
+    it("Transaction reuse", async () => {
+        await assertOperationError(async () => {
+            const transaction = new Transaction();
+            await transaction.run();
+            await transaction.commit();
+            await transaction.run();
+            await transaction.commit();
+        }, /You cannot rerun a transaction/);
+    });
+
+    it("Transaction not run", async () => {
+        await assertOperationError(async () => {
+            const transaction = new Transaction();
+            await transaction.find(ErrorTest, 1);
+        }, /Please call await transaction.run/);
+    });
+
+    it("Transaction find across connection", async () => {
+        await assertOperationError(async () => {
+            const transaction = new Transaction();
+            await transaction.run();
+            await transaction.find(SameErrorTest, 1);
+
+        }, /This entity is using a connection/);
+    });
+
+    it("Transaction save across connection", async () => {
+        await assertOperationError(async () => {
+            const transaction = new Transaction();
+            await transaction.run();
+
+            const entity1 = ErrorTest.create();
+            const entity2 = SameErrorTest.create();
+            transaction.save([entity1, entity2]);
+        }, /This entity is using a connection/);
+    });
+
+
 });

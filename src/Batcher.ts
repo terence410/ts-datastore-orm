@@ -23,7 +23,7 @@ export class Batcher {
         }
 
         // preparation
-        this._checkEntities(entities);
+        this._validateEntities(entities);
         const entityMeta = datastoreOrm.getEntityMeta(entities[0].constructor);
         const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const insertEntities = entities.filter(x => x.isNew);
@@ -111,7 +111,7 @@ export class Batcher {
         }
 
         // preparation
-        this._checkEntities(entities);
+        this._validateEntities(entities);
         const entityMeta = datastoreOrm.getEntityMeta(entities[0].constructor);
         const datastore = datastoreOrm.getConnection(entityMeta.connection);
         const maxBatch = this._options.maxBatch;
@@ -140,8 +140,8 @@ export class Batcher {
         return [entities.length, performanceHelper.readResult()];
     }
 
-    // we make sure entites are all of the same type
-    private _checkEntities(entities: BaseEntity[]) {
+    // we make sure entities are all of the same type
+    private _validateEntities(entities: BaseEntity[]) {
         const set = new Set(entities.map(x => x.constructor));
         if (set.size > 1) {
             throw new DatastoreOrmOperationError(`You can only use Batcher for same type of entities only.`);
