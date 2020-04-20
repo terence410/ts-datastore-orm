@@ -1,11 +1,9 @@
 import * as Datastore from "@google-cloud/datastore";
 import cluster from "cluster";
-import {configLoader} from "../configLoader";
 import {getUsedMemoryInMb} from "../utils";
 
 // datastore
-const config = configLoader.getConfig();
-const dataStore = new Datastore.Datastore({keyFilename: config.keyFilename});
+const dataStore = new Datastore.Datastore({keyFilename: "./serviceAccount.json"});
 
 // settings
 const kind = "speed";
