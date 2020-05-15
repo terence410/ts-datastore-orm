@@ -17,6 +17,11 @@ import {
     IRequestResponse,
 } from "./types";
 
+// this for dynamic typing in getAncestorId
+class DummyClass {
+    public id: string | number = 0;
+}
+
 export class BaseEntity {
     // region static methods
 
@@ -171,7 +176,6 @@ export class BaseEntity {
 
     // endregion
 
-    // public id: string | number = 0;
     private _isNew = true;
     private _isReadOnly = false;
     private _ancestorKey: IKey | undefined;
@@ -463,7 +467,7 @@ export class BaseEntity {
         return [undefined, {executionTime: 0}];
     }
 
-    public getAncestorId<T extends any>(entityType: T): IPropType<T, "id"> | undefined {
+    public getAncestorId<T extends typeof DummyClass>(entityType: T): IPropType<InstanceType<T>, "id"> {
         const entityMeta = datastoreOrm.getEntityMeta(entityType as any);
 
         let key = this.getKey();
@@ -473,6 +477,8 @@ export class BaseEntity {
                 return key.name ? key.name : Number(key.id);
             }
         }
+
+        throw new DatastoreOrmOperationError(`(${this.constructor.name}) The entity has no ancestor (${(entityType as any).name}) or ancestor is not set.`);
     }
 
     public toJSON() {

@@ -30,17 +30,27 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         }
 
         // it has a subclass, add all it's column
-        const subClassTarget = Object.getPrototypeOf(target);
-        if (subClassTarget !== BaseEntity) {
-            const subClassEntityMeta = datastoreOrm.getEntityMeta(subClassTarget);
-            if (subClassEntityMeta) {
-                throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity is subclassing (${subClassTarget.name}) which is already defined as an Entity.`);
+        let subClassTarget = Object.getPrototypeOf(target);
+        while (true) {
+            // no more sub class
+            if (!(subClassTarget instanceof Function)) {
+                break;
             }
 
-            const subClassColumns = datastoreOrm.getEntityColumns(subClassTarget);
-            for (const [column, entityColumn] of Object.entries(subClassColumns)) {
-                datastoreOrm.addColumn(target, column, entityColumn);
+            if (subClassTarget !== BaseEntity) {
+                const subClassEntityMeta = datastoreOrm.getEntityMeta(subClassTarget);
+                if (subClassEntityMeta) {
+                    throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity is subclassing (${subClassTarget.name}) which is already defined as an Entity.`);
+                }
+
+                const subClassColumns = datastoreOrm.getEntityColumns(subClassTarget);
+                for (const [column, entityColumn] of Object.entries(subClassColumns)) {
+                    datastoreOrm.addColumn(target, column, entityColumn);
+                }
             }
+
+            // continue to find sub class
+            subClassTarget = Object.getPrototypeOf(subClassTarget);
         }
 
         // get existing entity columns
