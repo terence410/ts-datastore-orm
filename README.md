@@ -76,7 +76,8 @@ import {BaseEntity, Batcher, Column, CompositeIndex, datastoreOrm, Entity, Trans
 @CompositeIndex({string: "asc", ["object.name"]: "asc"})
 @Entity({namespace: "testing", kind: "User"})
 export class User extends BaseEntity {
-    @Column({generateId: true})
+    // cast is to make sure id must be number
+    @Column({generateId: true, cast: Number})
     public id: number = 0;
 
     @Column()
@@ -452,3 +453,4 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 - https://cloud.google.com/datastore/docs/
 - https://www.npmjs.com/package/@google-cloud/datastore
 - https://www.npmjs.com/package/@google-cloud/firestore
+

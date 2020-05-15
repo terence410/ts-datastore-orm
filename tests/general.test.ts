@@ -254,5 +254,9 @@ describe("General Test: Ancestors", () => {
                 assert.equal(task3.getAncestorId(User), user3.id);
             }
         }
+
+        // get something without ancestor
+        const task4 = Task.create({id: 2, total: 12});
+        assert.throw(() => task4.getAncestorId(User), /The entity has no ancestor/);
     });
 });

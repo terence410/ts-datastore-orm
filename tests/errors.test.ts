@@ -1,4 +1,4 @@
-import { assert, expect } from "chai";
+import {assert, expect} from "chai";
 import {
     Batcher, datastoreOrm,
     DatastoreOrmDatastoreError,
@@ -456,6 +456,5 @@ describe("Errors Test: Datastore", () => {
             transaction.save([entity1, entity2]);
         }, /This entity is using a connection/);
     });
-
 
 });

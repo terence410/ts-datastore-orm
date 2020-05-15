@@ -463,7 +463,7 @@ export class BaseEntity {
         return [undefined, {executionTime: 0}];
     }
 
-    public getAncestorId<T extends any>(entityType: T): IPropType<T, "id"> | undefined {
+    public getAncestorId<T extends any>(entityType: T): IPropType<T, "id"> {
         const entityMeta = datastoreOrm.getEntityMeta(entityType as any);
 
         let key = this.getKey();
@@ -473,6 +473,8 @@ export class BaseEntity {
                 return key.name ? key.name : Number(key.id);
             }
         }
+
+        throw new DatastoreOrmOperationError(`(${this.constructor.name}) The entity has no ancestor (${entityType.name}) or ancestor is not set.`);
     }
 
     public toJSON() {
