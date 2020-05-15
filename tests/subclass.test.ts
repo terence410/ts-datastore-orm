@@ -33,6 +33,10 @@ describe("Subclass Test", () => {
     it("create entity", async () => {
         const [entity] = await SubClass.create({name: "Terence", createdAt: new Date(1234)}).save();
         const [newEntity] = await SubClass.find(entity.id);
+        if (newEntity) {
+            assert.containsAllKeys(newEntity.getValues(), ["createdAt", "updatedAt"]);
+        }
+
         entity.set("createdAt", new Date());
         entity.set("updatedAt", new Date());
         assert.isNumber(entity.get("createdAt").getTime());

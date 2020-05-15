@@ -33,7 +33,7 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         let subClassTarget = Object.getPrototypeOf(target);
         while (true) {
             // no more sub class
-            if (subClassTarget === Object.getPrototypeOf(Function)) {
+            if (!(subClassTarget instanceof Function)) {
                 break;
             }
 
