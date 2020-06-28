@@ -4,7 +4,7 @@ import * as DataStore from "@google-cloud/datastore";
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
 import {errorCodes} from "./enums/errorCodes";
-import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
@@ -147,7 +147,7 @@ export class Transaction {
         try {
             await this.datastoreTransaction.run();
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`Transaction Run Error. Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`Transaction Run Error. Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
@@ -172,7 +172,7 @@ export class Transaction {
             return [performanceHelper.readResult()];
 
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`Transaction Commit Error. Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`Transaction Commit Error. Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
@@ -201,7 +201,7 @@ export class Transaction {
             return [performanceHelper.readResult()];
 
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`Transaction Rollback Error. Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`Transaction Rollback Error. Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
@@ -269,7 +269,7 @@ export class Transaction {
                 return [entities, performanceHelper.readResult()];
 
             } catch (err) {
-                const error = new DatastoreOrmDatastoreError(`(${entityType.name}) Transaction Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
+                const error = new DatastoreOrmNativeError(`(${entityType.name}) Transaction Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
                     err.code,
                     err);
                 if (friendlyErrorStack) {
@@ -354,7 +354,7 @@ export class Transaction {
             return [ids, performanceHelper.readResult()];
 
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${entityType.name}) Transaction Allocate Ids Error. Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`(${entityType.name}) Transaction Allocate Ids Error. Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {

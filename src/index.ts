@@ -8,7 +8,7 @@ import {Entity} from "./decorators/Entity";
 import {errorCodes} from "./enums/errorCodes";
 import {namespaceStats} from "./enums/namespaceStats";
 import {stats} from "./enums/stats";
-import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
 import {DatastoreOrmDecoratorError} from "./errors/DatastoreOrmDecoratorError";
 import {DatastoreOrmError} from "./errors/DatastoreOrmError";
 import {DatastoreOrmLockHelperError} from "./errors/DatastoreOrmLockHelperError";
@@ -45,7 +45,7 @@ export {
     DatastoreOrmDecoratorError,
     DatastoreOrmOperationError,
     DatastoreOrmLockHelperError,
-    DatastoreOrmDatastoreError,
+    DatastoreOrmNativeError,
     DatastoreOrmError,
 
     // types & enums

@@ -22,6 +22,8 @@ This package also heavily tested with all features. You can find all the test ca
 
 You can also compare the native performance of [nodejs-datastore](https://github.com/terence410/ts-datastore-orm/blob/master/src/performance/datastore.performance.ts) with [ts-datastorem-orm](https://github.com/terence410/ts-datastore-orm/blob/master/src/performance/datastoreorm.performance.ts). Basically there is no significant overhead compared with native nodejs-datastore package.
 
+P.S.: I have been using this library over 6 months for many of my production projects, which has more than 1 million monthly active users**.
+
 # Feature
 - Covering all features of datastore: query, transaction, ancestor, index, allocateIds, namespace, etc..
 - Simple class structure using typescript decorator. (Very similar to [type-orm](https://www.npmjs.com/package/typeorm))
@@ -70,7 +72,7 @@ async function main() {
 
 # General Usage
 ```typescript
-import {BaseEntity, Batcher, Column, CompositeIndex, datastoreOrm, Entity, Transaction, DatastoreOrmDatastoreError, DatastoreOrmError} from "ts-datastore-orm";
+import {BaseEntity, Batcher, Column, CompositeIndex, datastoreOrm, Entity, Transaction, DatastoreOrmNativeError, DatastoreOrmError} from "ts-datastore-orm";
 
 @CompositeIndex({id: "desc"})
 @CompositeIndex({string: "asc", ["object.name"]: "asc"})
@@ -95,7 +97,7 @@ export class User extends BaseEntity {
     @Column()
     public array: number[] = [];
 
-    @Column({excludeFromIndexes: ["object.name"]})
+    @Column({index: true, excludeFromIndexes: ["object.name"]})
     public object: any = {};
     
     @Column()
@@ -120,7 +122,7 @@ export class TaskGroup extends BaseEntity {
 async function init() {
     datastoreOrm.addConnection("default", {keyFilename: "serviceAccount.json"});
     datastoreOrm.addConnection("production", {clientEmail: "", privateKey: ""});
-    const datastore1 = datastoreOrm.getConnection();
+    const datastore1 = datastoreOrm.getConnection(); // default connection
     const datastore2 = datastoreOrm.getConnection("production");
 }
 
@@ -155,7 +157,7 @@ async function ancestorExamples() {
 
     // get back the user
     const [user2] = await taskGroup1.getAncestor(User);
-    const user2Id = await taskGroup1.getAncestorId(User);
+    const user2Id: number = taskGroup1.getAncestorId(User); // strong typed
 
     // ignore the strong type on method call
     const [taskGroup2] = await TaskGroup.query()
@@ -185,7 +187,7 @@ async function ancestorExamples() {
 }
 
 async function eventExamples() {
-    const events = EventTest.getEvents();
+    const events = User.getEvents();
     events.on("create", entity => {
 
     });
@@ -201,7 +203,8 @@ async function operationExamples() {
     await User.truncate();
     const [ids] = await User.allocateIds(1);
     
-    // generate composite index
+    // generate composite index, you have to deploy the index.yaml via gcloud sdk, details not covered here
+    // https://cloud.google.com/datastore/docs/concepts/indexes
     await datastoreOrm.exportCompositeIndexes("./index.yaml", [User]);
 }
 
@@ -291,7 +294,7 @@ async function transaction1Examples() {
             }
         }
     } catch (err) {
-        if (err instanceof DatastoreOrmDatastoreError) {
+        if (err instanceof DatastoreOrmNativeError) {
             // err from data store
         } else if (err instanceof DatastoreOrmError) {
             // other library error
@@ -326,7 +329,7 @@ async function errorExamples() {
     } catch (err) {
         // all errors extends DatastoreOrmError
         if (err instanceof DatastoreOrmError) {
-            if (err instanceof DatastoreOrmDatastoreError) {
+            if (err instanceof DatastoreOrmNativeError) {
                 // errors related to the google datastore
 
             } else if (err instanceof DatastoreOrmOperationError) {
@@ -370,8 +373,11 @@ import {IncrementHelper} from "ts-datastore-orm";
 async function incrementHelperExamples() {
     const [user1] = await User.create().save();
     const incrementHelper = new IncrementHelper(user1);
-    const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
-    const latestValue = user1.number;
+    try {
+        const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
+        const latestValue = user1.number;
+    } catch (err) {
+    }
 }
 ```
 
@@ -394,6 +400,7 @@ If you have performance considering, please use some other tools like [Redis Loc
 import {LockHelper} from "ts-datastore-orm";
 
 async function lockHelperExamples() {
+    // this will use the default connection
     const key = "test1";
     LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, throwReleaseError: false});
     // expire: how long the lock will be expired
@@ -409,7 +416,7 @@ async function lockHelperExamples() {
         // isReleased = true // an lock is in released state (whether you released it or it is expired)
         // isReleased = false // an lock still exist, in the case that your lock is expired and acquired by others
     } catch (err) {
-        if (err instanceof DatastoreOrmLockError) {
+        if (err instanceof DatastoreOrmLockHelperError) {
             // if you failed to acquire the lock
         } else {
             // other logic error
@@ -449,7 +456,7 @@ Samples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tre
 | IndexResaveHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/indexResaveHelper.test.ts) |
 
 # Useful links
-- https://googleapis.dev/nodejs/datastore/5.0.0/index.html
+- https://googleapis.dev/nodejs/datastore/6.0.0/index.html
 - https://cloud.google.com/datastore/docs/
 - https://www.npmjs.com/package/@google-cloud/datastore
 - https://www.npmjs.com/package/@google-cloud/firestore

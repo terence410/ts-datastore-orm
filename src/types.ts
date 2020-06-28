@@ -1,7 +1,7 @@
 import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import * as DatastoreQuery from "@google-cloud/datastore/build/src/query";
 import {BaseEntity} from "./BaseEntity";
-import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
 
 // region basic
 
@@ -94,32 +94,32 @@ export interface IEntityMeta extends  IEntityMetaBase {
 export interface IQueryStreamEvent<T> {
     on(type: "data", callback: (entity: T) => void): this;
     on(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    on(type: "error", callback: (error: DatastoreOrmDatastoreError) => void): this;
+    on(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
     on(type: "end", callback: () => void): this;
 
     addListener(type: "data", callback: (entity: T) => void): this;
     addListener(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    addListener(type: "error", callback: (error: DatastoreOrmDatastoreError) => void): this;
+    addListener(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
     addListener(type: "end", callback: () => void): this;
 
     removeListener(type: "data", callback: (entity: T) => void): this;
     removeListener(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    removeListener(type: "error", callback: (error: DatastoreOrmDatastoreError) => void): this;
+    removeListener(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
     removeListener(type: "end", callback: () => void): this;
 
     once(type: "data", callback: (entity: T) => void): this;
     once(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    once(type: "error", callback: (error: DatastoreOrmDatastoreError) => void): this;
+    once(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
     once(type: "end", callback: () => void): this;
 
     off(type: "data", callback: (entity: T) => void): this;
     off(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    off(type: "error", callback: (error: DatastoreOrmDatastoreError) => void): this;
+    off(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
     off(type: "end", callback: () => void): this;
 
     emit(type: "data", entity: T): void;
     emit(type: "info", info: DatastoreQuery.RunQueryInfo): void;
-    emit(type: "error", error: DatastoreOrmDatastoreError): void;
+    emit(type: "error", error: DatastoreOrmNativeError): void;
     emit(type: "end"): void;
 }
 
