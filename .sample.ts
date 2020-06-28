@@ -5,7 +5,7 @@ import {
     Batcher,
     Column,
     datastoreOrm,
-    DatastoreOrmDatastoreError, DatastoreOrmDecoratorError,
+    DatastoreOrmNativeError, DatastoreOrmDecoratorError,
     DatastoreOrmError, DatastoreOrmLockHelperError, DatastoreOrmOperationError,
     DescendentHelper,
     Entity,
@@ -60,7 +60,7 @@ export class TaskGroup extends BaseEntity {
 async function init() {
     datastoreOrm.addConnection("default", {keyFilename: "serviceAccount.json"});
     datastoreOrm.addConnection("another", {clientEmail: "", privateKey: ""});
-    const datastore1 = datastoreOrm.getConnection();
+    const datastore1 = datastoreOrm.getConnection(); // default connection
     const datastore2 = datastoreOrm.getConnection("another");
 }
 
@@ -95,7 +95,7 @@ async function ancestorExamples() {
 
     // get back the user
     const [user2] = await taskGroup1.getAncestor(User);
-    const user2Id = await taskGroup1.getAncestorId(User);
+    const user2Id: number = taskGroup1.getAncestorId(User); // strong typed
 
     // ignore the strong type on method call
     const [taskGroup2] = await TaskGroup.query()
@@ -141,7 +141,8 @@ async function operationExamples() {
     await User.truncate();
     const [ids] = await User.allocateIds(1);
 
-    // generate composite index
+    // generate composite index, you have to deploy the index.yaml via gcloud sdk, details not covered here
+    // https://cloud.google.com/datastore/docs/concepts/indexes
     await datastoreOrm.exportCompositeIndexes("./index.yaml", [User]);
 }
 
@@ -223,7 +224,7 @@ async function transaction1Examples() {
             }
         }
     } catch (err) {
-        if (err instanceof DatastoreOrmDatastoreError) {
+        if (err instanceof DatastoreOrmNativeError) {
             // err from data store
         } else if (err instanceof DatastoreOrmError) {
             // other library error
@@ -255,7 +256,7 @@ async function errorExamples() {
     } catch (err) {
         // all errors extends DatastoreOrmError
         if (err instanceof DatastoreOrmError) {
-            if (err instanceof DatastoreOrmDatastoreError) {
+            if (err instanceof DatastoreOrmNativeError) {
                 // errors related to the google datastore
 
             } else if (err instanceof DatastoreOrmOperationError) {
@@ -286,8 +287,12 @@ async function descendentHelperExamples() {
 async function incrementHelperExamples() {
     const [user1] = await User.create().save();
     const incrementHelper = new IncrementHelper(user1);
-    const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
-    const latestValue = user1.number;
+    try {
+        const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
+        const latestValue = user1.number;
+    } catch (err) {
+
+    }
 }
 
 async function indexResaveHelperExamples() {
@@ -296,6 +301,7 @@ async function indexResaveHelperExamples() {
 }
 
 async function lockHelperExamples() {
+    // this will use the default connection
     const key = "test1";
     LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, throwReleaseError: false});
     // expire: how long the lock will be expired

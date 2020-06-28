@@ -1,7 +1,7 @@
 import {assert, expect} from "chai";
 import {
     Batcher, datastoreOrm,
-    DatastoreOrmDatastoreError,
+    DatastoreOrmNativeError,
     DatastoreOrmDecoratorError,
     DatastoreOrmOperationError,
     Transaction,
@@ -69,7 +69,7 @@ async function assertDatastoreError(callback: () => void, errorMessageRegex: Reg
     try {
         await callback();
     } catch (err) {
-        assert.isTrue(err instanceof DatastoreOrmDatastoreError);
+        assert.isTrue(err instanceof DatastoreOrmNativeError);
         message = err.message;
     }
     assert.match(message, errorMessageRegex);
@@ -362,7 +362,7 @@ describe("Errors Test: Datastore", () => {
         await new Promise(resolve => {
             const stream = ErrorTest.query().setNamespace("not exist").runStream();
             stream.on("error", err => {
-                assert.isTrue(err instanceof DatastoreOrmDatastoreError);
+                assert.isTrue(err instanceof DatastoreOrmNativeError);
                 assert.match(err.message, /Query Run Stream Error/);
                 resolve();
             });

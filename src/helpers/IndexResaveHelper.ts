@@ -1,4 +1,4 @@
-import {DatastoreOrmDatastoreError, DatastoreOrmOperationError} from "..";
+import {DatastoreOrmNativeError, DatastoreOrmOperationError} from "..";
 import {BaseEntity} from "../BaseEntity";
 import {datastoreOrm} from "../datastoreOrm";
 import {IArgvColumns, IArgvNamespace, IRequestResponse} from "../types";
@@ -55,7 +55,7 @@ export class IndexResaveHelper<T extends typeof BaseEntity> {
             try {
                 await datastore.merge(updateDataList);
             } catch (err) {
-                const error = new DatastoreOrmDatastoreError(`(IndexResaveHelper, ${this.entityType.name}) Datastore update error. Error: ${err.message}.`,
+                const error = new DatastoreOrmNativeError(`(IndexResaveHelper, ${this.entityType.name}) Datastore update error. Error: ${err.message}.`,
                     err.code,
                     err);
                 if (friendlyErrorStack) {

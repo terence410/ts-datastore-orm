@@ -4,7 +4,7 @@ import * as DatastoreQuery from "@google-cloud/datastore/build/src/query";
 import {EventEmitter} from "events";
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
-import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
 import {Transaction} from "./Transaction";
@@ -28,12 +28,12 @@ export class Query<T extends typeof BaseEntity> {
     private _namespace = "";
     private _query: DatastoreQuery.Query;
 
-    constructor(public readonly entityType: T, public readonly transaction?: Transaction) {
-        const entityMeta = datastoreOrm.getEntityMeta(this.entityType);
+    constructor(private readonly _entityType: T, private readonly _transaction?: Transaction) {
+        const entityMeta = datastoreOrm.getEntityMeta(this._entityType);
         this._namespace = entityMeta.namespace;
 
-        if (transaction) {
-            this._query = transaction.datastoreTransaction.createQuery(entityMeta.namespace, entityMeta.kind);
+        if (_transaction) {
+            this._query = _transaction.datastoreTransaction.createQuery(entityMeta.namespace, entityMeta.kind);
 
         } else {
             this._query = datastoreOrm.getConnection(entityMeta.connection).createQuery(entityMeta.namespace, entityMeta.kind);
@@ -80,7 +80,7 @@ export class Query<T extends typeof BaseEntity> {
         // check namespace
         if (ancestorKey.namespace !== this._namespace) {
             throw new DatastoreOrmOperationError(
-                `(${this.entityType.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the query namespace (${this._namespace}).`);
+                `(${this._entityType.name}) The ancestor namespace (${ancestorKey.namespace}) is different with the query namespace (${this._namespace}).`);
         }
 
         this._ancestor = ancestorKey;
@@ -158,7 +158,7 @@ export class Query<T extends typeof BaseEntity> {
         }
 
         if (column === "id") {
-            const key = datastoreOrm.createKey({namespace: this._namespace, path: [this.entityType, value]});
+            const key = datastoreOrm.createKey({namespace: this._namespace, path: [this._entityType, value]});
 
             if (this._ancestor) {
                 key.parent = this._ancestor;
@@ -209,7 +209,7 @@ export class Query<T extends typeof BaseEntity> {
             this._lastRunQueryInfo = queryInfo;
 
             for (const entityData of results) {
-                const entity = this.entityType.newFromEntityData(entityData, this._isReadOnly);
+                const entity = this._entityType.newFromEntityData(entityData, this._isReadOnly);
                 entities.push(entity);
             }
 
@@ -221,7 +221,7 @@ export class Query<T extends typeof BaseEntity> {
             return [entities, performanceHelper.readResult()];
 
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${this.entityType.name}) Query Run Error. Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`(${this._entityType.name}) Query Run Error. Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
@@ -247,12 +247,12 @@ export class Query<T extends typeof BaseEntity> {
         // start stream
         const stream = this._query.runStream();
         stream.on("data", entityData => {
-            const entity = this.entityType.newFromEntityData(entityData, this._isReadOnly);
+            const entity = this._entityType.newFromEntityData(entityData, this._isReadOnly);
             streamEvent.emit("data", entity);
         });
 
         stream.on("error", err => {
-            const error = new DatastoreOrmDatastoreError(`(${this.entityType.name}) Query Run Stream Error. Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`(${this._entityType.name}) Query Run Stream Error. Error: ${err.message}.`,
                 (err as any).code,
                 err);
             if (friendlyErrorStack) {

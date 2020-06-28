@@ -1,6 +1,6 @@
 import {BaseEntity} from "./BaseEntity";
 import {datastoreOrm} from "./datastoreOrm";
-import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
@@ -59,7 +59,7 @@ export class Batcher {
                     }
 
                 } catch (err) {
-                    const error = new DatastoreOrmDatastoreError(`Batcher Save Error for insert. Error: ${err.message}.`,
+                    const error = new DatastoreOrmNativeError(`Batcher Save Error for insert. Error: ${err.message}.`,
                         err.code,
                         err);
                     if (friendlyErrorStack) {
@@ -83,7 +83,7 @@ export class Batcher {
                     const [updateResult] = await datastore.update(updateSaveDataList);
 
                 } catch (err) {
-                    const error = new DatastoreOrmDatastoreError(`Batcher Save Error for update. Error: ${err.message}.`,
+                    const error = new DatastoreOrmNativeError(`Batcher Save Error for update. Error: ${err.message}.`,
                         err.code,
                         err);
                     if (friendlyErrorStack) {
@@ -126,7 +126,7 @@ export class Batcher {
                 // emit events
                 entities.forEach(x => eventEmitters.emit("delete", x));
             } catch (err) {
-                const error = new DatastoreOrmDatastoreError(`Batcher Delete Error. Error: ${err.message}.`,
+                const error = new DatastoreOrmNativeError(`Batcher Delete Error. Error: ${err.message}.`,
                     err.code,
                     err);
                 if (friendlyErrorStack) {

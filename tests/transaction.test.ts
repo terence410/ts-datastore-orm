@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {DatastoreOrmDatastoreError, Transaction} from "../src";
+import {DatastoreOrmNativeError, Transaction} from "../src";
 import {BaseEntity} from "../src/BaseEntity";
 import {Column} from "../src/decorators/Column";
 import {Entity} from "../src/decorators/Entity";
@@ -129,7 +129,7 @@ describe("Transaction Test", () => {
             });
             assert.isTrue(false);
         } catch (err) {
-            assert.isFalse(err instanceof DatastoreOrmDatastoreError);
+            assert.isFalse(err instanceof DatastoreOrmNativeError);
             assert.equal(err.message, "test");
         }
     });
@@ -159,7 +159,7 @@ describe("Transaction Test", () => {
             ]);
             assert.isTrue(false);
         } catch (err) {
-            assert.isTrue(err instanceof DatastoreOrmDatastoreError);
+            assert.isTrue(err instanceof DatastoreOrmNativeError);
         }
 
         try {

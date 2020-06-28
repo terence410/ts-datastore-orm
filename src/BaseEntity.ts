@@ -1,7 +1,7 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Batcher} from "./Batcher";
 import {datastoreOrm} from "./datastoreOrm";
-import {DatastoreOrmDatastoreError} from "./errors/DatastoreOrmDatastoreError";
+import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
 import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
 import {eventEmitters} from "./eventEmitters";
 import {PerformanceHelper} from "./helpers/PerformanceHelper";
@@ -84,7 +84,7 @@ export class BaseEntity {
                 return [entities, performanceHelper.readResult()];
 
             } catch (err) {
-                const error = new DatastoreOrmDatastoreError(`(${this.name}) Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
+                const error = new DatastoreOrmNativeError(`(${this.name}) Find Error. ids (${ids.join(", ")}). Error: ${err.message}.`,
                     err.code,
                     err);
                 if (friendlyErrorStack) {
@@ -121,7 +121,7 @@ export class BaseEntity {
             return [ids, performanceHelper.readResult()];
 
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${this.name}) Allocate Ids Error. Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`(${this.name}) Allocate Ids Error. Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
@@ -219,6 +219,7 @@ export class BaseEntity {
         };
     }
 
+    /** @internal */
     public getMergeData(data: object): IEntityData {
         const excludeFromIndexes = datastoreOrm.getExcludeFromIndexes(this.constructor);
         return {
@@ -363,7 +364,7 @@ export class BaseEntity {
 
             }
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${this.constructor.name}) Entity cannot be saved. id (${(this as any).id}). Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`(${this.constructor.name}) Entity cannot be saved. id (${(this as any).id}). Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
@@ -406,7 +407,7 @@ export class BaseEntity {
             // emit event
             eventEmitters.emit("update", this);
     } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${this.constructor.name}) Entity cannot be saved. id (${(this as any).id}). Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`(${this.constructor.name}) Entity cannot be saved. id (${(this as any).id}). Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
@@ -436,7 +437,7 @@ export class BaseEntity {
             eventEmitters.emit("delete", this);
 
         } catch (err) {
-            const error = new DatastoreOrmDatastoreError(`(${this.constructor.name}) Entity cannot be deleted. id (${(this as any).id}). Error: ${err.message}.`,
+            const error = new DatastoreOrmNativeError(`(${this.constructor.name}) Entity cannot be deleted. id (${(this as any).id}). Error: ${err.message}.`,
                 err.code,
                 err);
             if (friendlyErrorStack) {
