@@ -151,9 +151,7 @@ export type ITransactionDefaultOptions = {
     maxRetry: number;
     delay: number;
 };
-export type ITransactionExecuteOptions = ITransactionDefaultOptions & {
-    readOnly: boolean;
-};
+export type ITransactionExecuteOptions = ITransactionDefaultOptions & ITransactionOptions;
 export type IArgvCreateKey = {
     namespace?: string,
     ancestorKey?: IKey;

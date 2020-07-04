@@ -117,6 +117,8 @@ export class Transaction {
 
     // internal handling for rollback
     public hasRollback: boolean = false;
+
+    // private variables
     private _connection: string;
     private _hasCompleted: boolean = false;
     private _hasStarted: boolean = false;
