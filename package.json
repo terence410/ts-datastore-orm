@@ -25,7 +25,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@google-cloud/datastore": "6.1.1",
+    "@google-cloud/datastore": "^6.3.0",
     "@types/chai": "^4.2.5",
     "@types/mocha": "^5.2.7",
     "@types/node": "^12.12.14",
