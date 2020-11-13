@@ -1,14 +1,12 @@
 import {BaseEntity} from "../../src/BaseEntity";
-import {Column} from "../../src/decorators/Column";
 import {Entity} from "../../src/decorators/Entity";
-// @ts-ignore
-import {User} from "./User";
+import {Field} from "../../src/decorators/Field";
 
-@Entity({kind: "TaskGroup", ancestor: User})
+@Entity({namespace: "testing"})
 export class TaskGroup extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column()
+    @Field()
     public name: string = "";
 }

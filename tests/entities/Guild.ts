@@ -1,15 +1,15 @@
 import {BaseEntity} from "../../src/BaseEntity";
-import {Column} from "../../src/decorators/Column";
 import {Entity} from "../../src/decorators/Entity";
+import {Field} from "../../src/decorators/Field";
 
-@Entity({kind: "Guild"})
+@Entity({namespace: "testing", enumerable: true})
 export class Guild extends BaseEntity {
-    @Column()
-    public id: string = "";
+    @Field()
+    public _id: string = "";
 
-    @Column()
+    @Field()
     public date: Date = new Date();
 
-    @Column()
+    @Field()
     public name: string = "";
 }

@@ -1,337 +1,269 @@
-import {CompositeIndex} from "./src/decorators/CompositeIndex";
-import {LockHelper} from "./src/helpers/LockHelper";
-import {
-    BaseEntity,
-    Batcher,
-    Column,
-    datastoreOrm,
-    DatastoreOrmNativeError, DatastoreOrmDecoratorError,
-    DatastoreOrmError, DatastoreOrmLockHelperError, DatastoreOrmOperationError,
-    DescendentHelper,
-    Entity,
-    IncrementHelper, IndexResaveHelper,
-    Transaction,
-} from "./src/index";
+import { BaseEntity, CompositeIndex, CompositeIndexExporter, createConnection, Entity, Field, tsDatastoreOrm, TsDatastoreOrmError } from "./src/index";
 
-@CompositeIndex({id: "desc"})
-@CompositeIndex({string: "asc", ["object.name"]: "asc"})
-@Entity({namespace: "testing", kind: "User"})
+@CompositeIndex({_id: "desc"})
+@Entity({namespace: "testing", kind: "User", enumerable: true})
 export class User extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column()
+    @Field()
     public date: Date = new Date();
 
-    @Column({index: true})
+    @Field({index: true})
     public string: string = "";
 
-    @Column()
+    @Field()
     public number: number = 10;
 
-    @Column()
+    @Field()
     public buffer: Buffer = Buffer.alloc(1);
 
-    @Column()
+    @Field()
     public array: number[] = [];
 
-    @Column({index: true, excludeFromIndexes: ["object.name"]})
+    @Field({index: true, excludeFromIndexes: ["object.name"]})
     public object: any = {};
 
-    @Column()
+    @Field()
     public undefined: undefined = undefined;
 
-    @Column()
+    @Field()
     public null: null = null;
 }
 
-@Entity({namespace: "testing", kind: "TaskGroup", ancestor: User})
+@CompositeIndex({number: "desc", name: "desc"})
+@CompositeIndex({_id: "desc"})
+@Entity() // namespace: default, kind: same as class name
 export class TaskGroup extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column()
+    @Field()
     public name: string = "";
 
-    @Column()
+    @Field()
     public number: number = 0;
 }
 
-async function init() {
-    datastoreOrm.addConnection("default", {keyFilename: "serviceAccount.json"});
-    datastoreOrm.addConnection("another", {clientEmail: "", privateKey: ""});
-    const datastore1 = datastoreOrm.getConnection(); // default connection
-    const datastore2 = datastoreOrm.getConnection("another");
+async function generalExamples() {
+    const connection = await createConnection({keyFilename: "./datastoreServiceAccount.json"});
+    const repository = connection.getRepository(User, {namespace: "mynamespace", kind: "NewUser"});
+    const datastore = connection.datastore; // access to native datastore
+
+    const user1 = repository.create();
+    await repository.insert(user1);
+    const key = user1.getKey(); // the native datastore key
+
+    // the kind and namespace is attached to entity, but they are not enumerable by default
+    // use @Entity({enumerable: true}) such that if you console.log(entity), _kind and _namespace will be displayed as well
+    const {_kind, _namespace, _ancestorKey} = user1;
+
+    // simple query
+    const findUser1 = repository.findOne(user1._id);
+
+    // find users
+    const users = await repository
+        .query()
+        .filter("_id", x => x.gt(5))
+        .limit(100)
+        .findMany();
+
+    // get id
+    const ids = await repository.allocateIds(10);
+
+    // remove all data
+    await repository.truncate();
 }
 
-async function entityExamples() {
-    const user1 = User.create({id: 1});
-    const [user2, requestResponse1] = await User.create({id: 1}).save();
-    const [user3, requestResponse2] = await User.find(user1.id);
+async function multipleEntities() {
+    const connection = await createConnection({keyFilename: "./datastoreServiceAccount.json"});
+    const repository = connection.getRepository(User, {namespace: "mynamespace", kind: "NewUser"});
 
-    const user4 = new User();
-    const isNew = user4.isNew;
-    const values = user4.getValues();
-    await user4.save();
-    await user4.delete();
-    const [user5] = await User.query().filter("id", "=", user4.id).runOnce();
-    const [user6] = await User.find(user4.id);
-}
-
-async function batcherExamples() {
-    const batcher = new Batcher();
-    const users = Array(10).fill(0).map((x, i) => {
-        return User.create({number: i});
-    });
-    const [total1, requestResponse1] = await batcher.save(users);
-    const [total2, requestResponse2] = await batcher.delete(users);
+    const users = Array(10).map((_, i) => repository.create({number: i}));
+    await repository.insert(users);
+    await repository.update(users);
+    await repository.upsert(users);
+    await repository.delete(users);
 }
 
 async function ancestorExamples() {
-    const [user1] = await User.create({id: 1}).save();
-    const [taskGroup1] = await TaskGroup.create({id: 1, name: "group 1"})
-        .setAncestor(user1)
-        .save();
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const userRepository = connection.getRepository(User);
+    const taskGroupRepository = connection.getRepository(TaskGroup);
 
-    // get back the user
-    const [user2] = await taskGroup1.getAncestor(User);
-    const user2Id: number = taskGroup1.getAncestorId(User); // strong typed
+    const user1 = await userRepository.insert(userRepository.create({_id: 1}));
+    const taskGroup = taskGroupRepository.create({_id: 1, name: "group 1", _ancestorKey: user1.getKey()});
+    await taskGroupRepository.insert(taskGroup);
 
     // ignore the strong type on method call
-    const [taskGroup2] = await TaskGroup.query()
-        .filterAny("__key__", "=", taskGroup1.getKey())
-        .runOnce();
+    const findTaskGroup1 = await taskGroupRepository.query()
+        .filterKey(taskGroup.getKey())
+        .findOne();
 
-    const [taskGroup3] = await TaskGroup.query()
-        .setAncestor(user1)
-        .filter("id", "=", 1)
-        .runOnce();
+    // get back the user
+    if (findTaskGroup1?._ancestorKey) {
+        const findUser1 = await userRepository.findOne(findTaskGroup1._ancestorKey);
+    }
 
-    const [taskGroup4] = await TaskGroup.query()
-        .filterKey("=", datastoreOrm.getConnection().key(["user1", 1, "taskGroup", 1]))
-        .runOnce();
-
-    const key1 = datastoreOrm.createKey([User, 1]);
-    const key2 = datastoreOrm.createKey({ancestorKey: key1, path: [TaskGroup, 1]});
-    const [taskGroup5] = await TaskGroup.query()
-        .filterKey("=", key2)
-        .runOnce();
-
-    const key3 = datastoreOrm.createKey([User, 1, TaskGroup, 1]);
-    const [taskGroup6] = await TaskGroup.find({ancestor: user1, id: taskGroup1.id});
-    const [taskGroupList1] = await TaskGroup.query()
-        .setAncestor(user1)
-        .run();
+    // another way to query the entities
+    const findTaskGroup2 = await taskGroupRepository.query()
+        .setAncestorKey(user1.getKey())
+        .filter("_id", 1)
+        .findOne();
 }
 
-async function eventExamples() {
-    const events = User.getEvents();
-    events.on("create", entity => {
-        //
-    });
-    events.on("update", entity => {
-        //
-    });
-    events.on("delete", entity => {
-        //
-    });
-}
-
-async function operationExamples() {
-    await User.truncate();
-    const [ids] = await User.allocateIds(1);
-
-    // generate composite index, you have to deploy the index.yaml via gcloud sdk, details not covered here
-    // https://cloud.google.com/datastore/docs/concepts/indexes
-    await datastoreOrm.exportCompositeIndexes("./index.yaml", [User]);
-}
-
-async function keyExamples() {
-    const key1 = datastoreOrm.createKey([User, 1]);
-    const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
-    const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
-    const key4 = datastoreOrm.getConnection().key({namespace: "namespace", path: ["kind1", 1, "kind2", 2]});
-    const key5 = User.create({id: 1}).getKey();
-    const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
+async function adminExamples() {
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const myAdmin = connection.getAdmin();
+    const namespaces = await myAdmin.getNamespaces();
+    const kinds = await myAdmin.getKinds();
 }
 
 async function queryExamples() {
-    const [user1, requestResponse1] = await User.query().runOnce();
-    const [userList1, requestResponse2] = await User.findMany([1, 2, 3, 4, 5]);
-    const [userList2, requestResponse3] = await User.findMany({ancestor: user1, ids: [1, 2, 3, 4, 5]});
-    const [userList3, requestResponse4] = await User.query().run();
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const userRepository = connection.getRepository(User);
+    const user = userRepository.create({_id: 1});
 
-    const user2 = User.create({id: 1});
-    const query = TaskGroup.query()
-        .filter("number", "=", 10)
-        .filterAny("anyColumn.name", ">", 5)
-        .setAncestor(user2)
-        .groupByAny("anyColumn.name")
-        .orderAny("anyColumn.name", {descending: true})
+    const findUser1 = await userRepository.query().findOne();
+    const findUsers2 = await userRepository.findMany([1, 2, 3, 4, 5]);
+    const findUsers3 = await userRepository.query().filter("_id", x => x.ge(1).lt(6)).findMany();
+    const findUsers4 = await userRepository.query().limit(10).offset(3).order("number", {descending: true}).findMany();
+
+    // complex query with strong type
+    const query1 = userRepository.query()
+        .filter("number", 10)
+        .setAncestorKey(user.getKey())
+        .groupBy("number")
+        .order("number", {descending: true})
         .offset(5)
         .limit(10);
 
-    while (query.hasNextPage()) {
-        const [entities] = await query.run();
+    // complex query with strong type
+    const query = userRepository.query({weakType: true})
+        .filter("object.name", 10)
+        .setAncestorKey(user.getKey())
+        .groupBy("object.name")
+        .order("object.name", {descending: true})
+        .offset(5)
+        .limit(10);
+
+    // iterator
+    const batch = 500;
+    const iterator = userRepository.query().limit(batch).getAsyncIterator();
+    for await (const entities of iterator) {
+        if (entities.length === batch) {
+            // true
+        }
     }
 
-    // stream
-    const stream = query.runStream()
-        .on("data", (entity) => {
-            //
-        })
-        .on("info", (info) => {
-            //
-        })
-        .on("error", (error) => {
-            //
-        })
-        .on("end", () => {
-            //
-        });
+    // select key query
+    // this can save some query cost and also return faster
+    const keys = await userRepository.selectKeyQuery().findMany();
 }
 
-async function transaction1Examples() {
-    Transaction.setDefaultOptions({maxRetry: 0, delay: 50, readOnly: false});
-    
-    try {
-        const [taskGroup1, transactionResponse1] = await Transaction.execute(async transaction => {
-            let taskGroup2: TaskGroup | undefined;
-            const [user1, requestResponse1] = await transaction.find(User, 1);
-            const [userList1, requestResponse2] = await transaction.findMany(User, [1]);
+async function transactionManagerExamples() {
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const userRepository = connection.getRepository(User);
 
-            if (user1) {
-                taskGroup2 = TaskGroup.create({name: "Task Group"});
-                taskGroup2.setAncestor(user1);
-                transaction.save(taskGroup2);
-                return taskGroup2;
-            } else {
-                await transaction.rollback();
-            }
-        }, {maxRetry: 5});
+    const transactionManager1 = connection.getTransactionManager();
 
-        if (transactionResponse1.hasCommitted && taskGroup1) {
-            const taskGroup3Id = taskGroup1.id;
-            for (const entity of transactionResponse1.createdEntities) {
-                if (entity instanceof TaskGroup) {
-                    const taskGroup = entity as TaskGroup;
-                    const taskGroupId = taskGroup.id;
-                }
-            }
+    // customize behavior of the transaction
+    // for readonly transaction, please refer to datastore documentation
+    const transactionManager2 = connection.getTransactionManager({maxRetry: 3, retryDelay: 200, readOnly: true});
 
-            for (const entity of transactionResponse1.updatedEntities) {
-                //
-            }
-        }
-    } catch (err) {
-        if (err instanceof DatastoreOrmNativeError) {
-            // err from data store
-        } else if (err instanceof DatastoreOrmError) {
-            // other library error
+    const result = await transactionManager1.start(async (session) => {
+        const findEntity1 = await userRepository.findOneWithSession(1, session);
+        const findEntity2 = await userRepository.queryWithSession( session).findOne();
+        const ids = await userRepository.allocateIdsWithSession(10, session);
+
+        if (findEntity2) {
+            // only the last operation of the same entity will applies only
+            userRepository.insertWithSession(findEntity2, session);
+            userRepository.updateWithSession(findEntity2, session);
+            userRepository.upsertWithSession(findEntity2, session);
+            userRepository.deleteWithSession(findEntity2, session);
         } else {
-            // your own logic error
+            await session.rollback();
         }
-    }
-}
 
-async function transaction2Examples() {
-    const transaction1 = new Transaction();
-    await transaction1.run();
-    const [user1, requestResponse3] = await transaction1.find(User, 1);
-    try {
-        if (user1) {
-            transaction1.save(user1);
-            await transaction1.commit();
-        } else {
-            await transaction1.rollback(); // can consider omit await for faster performance
-        }
-    } catch (err) {
-        await transaction1.rollback(); // can consider omit await for faster performance
-    }
+        return 5;
+    });
+
+    // value === 5 in above case
+    const {value, hasCommitted, totalRetry} = result;
 }
 
 async function errorExamples() {
+    // this help you to provide a better stack upon error
+    tsDatastoreOrm.useFriendlyErrorStack = true;
+
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const userRepository = connection.getRepository(User);
+    const user = userRepository.create({_id: 1});
+
     try {
-        const [user1] = await User.create().save();
+        await userRepository.delete(user);
     } catch (err) {
-        // all errors extends DatastoreOrmError
-        if (err instanceof DatastoreOrmError) {
-            if (err instanceof DatastoreOrmNativeError) {
-                // errors related to the google datastore
+        if (err instanceof TsDatastoreOrmError) {
+            // error from this library
 
-            } else if (err instanceof DatastoreOrmOperationError) {
-                // errors related to the library
-
-            } else if (err instanceof DatastoreOrmDecoratorError) {
-                // errors related to your decorator
-            }
         }
     }
-}
-
-async function descendentHelperExamples() {
-    const [user1] = await User.create({id: 1}).save();
-    const descendentHelper1 = new DescendentHelper(user1);
-    const [taskGroup1] = await descendentHelper1.findOne(TaskGroup);
-    const [taskGroups1] = await descendentHelper1.findMany(TaskGroup);
-
-    // use in transaction
-    const [_, transactionResponse1] = await Transaction.execute(async transaction => {
-        const [user2] = await transaction.find(User, 1);
-        const descendentHelper2 = new DescendentHelper(user1, transaction);
-        const [taskGroup2] = await descendentHelper2.findOne(TaskGroup);
-        const [taskGroups2] = await descendentHelper2.findMany(TaskGroup);
-    });
 }
 
 async function incrementHelperExamples() {
-    const [user1] = await User.create().save();
-    const incrementHelper = new IncrementHelper(user1);
-    try {
-        const [total, response12] = await incrementHelper.increment("number", 1, {maxRetry: 2});
-        const latestValue = user1.number;
-    } catch (err) {
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const userRepository = connection.getRepository(User);
+    const user = userRepository.create({_id: 1});
+    const incrementHelper = userRepository.getIncrementHelper();
 
-    }
+    // take all kind of parameters
+    const latestValue1 = await incrementHelper.increment(user._id, "number", 10);
+    const latestValue2 = await incrementHelper.increment(user, "number", 10);
+    const latestValue3 = await incrementHelper.increment(user.getKey(), "number", 10);
 }
 
 async function indexResaveHelperExamples() {
-    const indexResaveHelper = new IndexResaveHelper(User);
-    const [totalResaved] = await indexResaveHelper.resave(["number"]);
+    // sometimes u added new index and need to resave the entities
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const userRepository = connection.getRepository(User);
+    const helper = userRepository.getIndexResaveHelper();
+
+    await helper.resave("number");
+    await helper.resave(["number", "string"]);
 }
 
-async function lockHelperExamples() {
-    // this will use the default connection
-    const key = "test1";
-    LockHelper.setDefaultOptions({expire: 1000, maxRetry: 2, delay: 50, throwReleaseError: false});
-    // expire: how long the lock will be expired
-    // maxRetry: the number of retry if it failed to acquire an lock
-    // delay: the delay in ms waiting for a retry
-    // throwReleaseError: whether you wanted to care any release error
+async function lockManagerExamples() {
+    // this is a tool for atomic lock
+    const connection = await createConnection({clientEmail: "", privateKey: ""});
+    const lockManager1 = connection.getLockManager({expiresIn: 1000});
 
-    const lockHelper1 = new LockHelper(key, {expire: 1000, maxRetry: 5, delay: 100});
-    try {
-        const [isNewLock] = await lockHelper1.acquire();
-        // isNewLock = true // you are acquired an expired lock
-        const [isReleased] = await lockHelper1.release();
-        // isReleased = true // an lock is in released state (whether you released it or it is expired)
-        // isReleased = false // an lock still exist, in the case that your lock is expired and acquired by others
-    } catch (err) {
-        if (err instanceof DatastoreOrmLockHelperError) {
-            // if you failed to acquire the lock
-        } else {
-            // other logic error
-        }
-    }
+    // this look will try to acquire the lock 2 more times if it failed, waiting 100ms for each retry
+    // you can also customize which namespace and kind to save temporary data of the lock
+    const lockManager2 = connection.getLockManager({expiresIn: 1000, maxRetry: 2, retryDelay: 100, namespace: "custom", kind: "Lock"});
 
     try {
-        const [resultString, response] = await LockHelper.execute(key, async (lockHelper2) => {
-            return "value";
-        }, {maxRetry: 2});
-    } catch (err) {
-        //
-    }
+        const lockKey = "anyKey";
+        const result = await lockManager1.start(lockKey, async () => {
+            return 5;
+        });
+        console.log(result.value);
 
-    // remove all lock
-    await LockHelper.truncate();
+    } catch (err) {
+        // your own error or lock acquire error
+
+    }
+}
+
+async function compositeIndexExamples() {
+    const filename = "./index.yaml";
+    const exporter = new CompositeIndexExporter();
+    exporter.addEntity(User, {kind: "NewUser"});
+    exporter.addEntity(TaskGroup, {kind: "NewTaskGroup"});
+    // you can add multiple class, but you can't customize the kind name
+    exporter.addEntity([User, TaskGroup]);
+
+    const yaml = exporter.getYaml();
+    exporter.exportTo(filename);
+
 }

@@ -3,10 +3,10 @@ import cluster from "cluster";
 import {getUsedMemoryInMb} from "../utils";
 
 // datastore
-const dataStore = new Datastore.Datastore({keyFilename: "./serviceAccount.json"});
+const dataStore = new Datastore.Datastore({keyFilename: "./datastoreServiceAccount.json"});
 
 // settings
-const kind = "speed";
+const kind = "speed1";
 const workerId = process.env.workerId || 0;
 const reportDuration = 5 * 1000;
 const createBatch = 100;

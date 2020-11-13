@@ -29,3 +29,18 @@ export function readJsonFile(filename: string) {
     const rawData = fs.readFileSync(filename);
     return JSON.parse(rawData.toString());
 }
+
+/** @internal */
+export function replaceFirstLine(paragraph: string, firstline: string): string {
+    return paragraph.replace(/^.*/, firstline);
+}
+
+/** @internal */
+export function updateStack(stack: string, error: Error) {
+    if (error.name) {
+        return replaceFirstLine(stack, `${error.name}: ${error.message}`);
+
+    } else {
+        return replaceFirstLine(stack, error.message);
+    }
+}

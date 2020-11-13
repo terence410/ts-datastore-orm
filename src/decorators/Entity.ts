@@ -1,34 +1,10 @@
 import {BaseEntity} from "../BaseEntity";
-import {datastoreOrm} from "../datastoreOrm";
-import {DatastoreOrmDecoratorError} from "../errors/DatastoreOrmDecoratorError";
-import {IEntityMeta, IEntityMetaBase} from "../types";
+import {decoratorMeta} from "../decoratorMeta";
+import {TsDatastoreOrmError} from "../errors/TsDatastoreOrmError";
+import {IEntityMetaOptions} from "../types";
 
-export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
-    return (target: object) => {
-        // set default values
-        let newEntityMeta: IEntityMeta = {
-            connection: "default",
-            namespace: entityMeta.namespace || "",
-            kind: (target as any).name,
-            ancestor: null,
-            excludeFromIndexes: [],
-        };
-        newEntityMeta = Object.assign(newEntityMeta, entityMeta);
-
-        // check if has existing kind
-        const existEntityType = datastoreOrm.getEntityByKind(newEntityMeta.connection, newEntityMeta.kind);
-        if (existEntityType) {
-            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity with kind (${newEntityMeta.kind}) is already used by another Entity (${(existEntityType as any).name}).`);
-        }
-
-        // check ancestor are having the same connection
-        if (newEntityMeta.ancestor) {
-            const ancestorEntityMeta = datastoreOrm.getEntityMeta(newEntityMeta.ancestor);
-            if (ancestorEntityMeta.connection !== newEntityMeta.connection) {
-                throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity's connection "${newEntityMeta.connection}" is different with ancestor's connection: "${ancestorEntityMeta.connection}".`);
-            }
-        }
-
+export function Entity(options: Partial<IEntityMetaOptions> = {}) {
+    return (target: any) => {
         // it has a subclass, add all it's column
         let subClassTarget = Object.getPrototypeOf(target);
         while (true) {
@@ -38,14 +14,13 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
             }
 
             if (subClassTarget !== BaseEntity) {
-                const subClassEntityMeta = datastoreOrm.getEntityMeta(subClassTarget);
-                if (subClassEntityMeta) {
-                    throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity is subclassing (${subClassTarget.name}) which is already defined as an Entity.`);
-                }
-
-                const subClassColumns = datastoreOrm.getEntityColumns(subClassTarget);
-                for (const [column, entityColumn] of Object.entries(subClassColumns)) {
-                    datastoreOrm.addColumn(target, column, entityColumn);
+                if (decoratorMeta.hasEntityFieldMetaList(subClassTarget)) {
+                    const subClassEntityFieldMeta = decoratorMeta.getEntityFieldMetaList(subClassTarget);
+                    for (const [fieldName, entityFieldMetaOptions] of subClassEntityFieldMeta.entries()) {
+                        if (!decoratorMeta.hasEntityFieldMeta(target, fieldName)) {
+                            decoratorMeta.addEntityFieldMeta(target, fieldName, entityFieldMetaOptions);
+                        }
+                    }
                 }
             }
 
@@ -54,36 +29,41 @@ export function Entity(entityMeta: Partial<IEntityMetaBase> = {}) {
         }
 
         // get existing entity columns
-        const entityColumns = datastoreOrm.getEntityColumns(target);
 
-        // check if we have a id column
-        const idColumn = Object.keys(entityColumns).find(x => x === "id");
-        if (!idColumn) {
-            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity must define an id column.`);
+        if (!decoratorMeta.hasEntityFieldMetaList(target)) {
+            throw new TsDatastoreOrmError(`(${(target as any).name}) Entity must define an _id field with property decorator @Field().`);
         }
 
-        if (!newEntityMeta.kind) {
-            throw new DatastoreOrmDecoratorError(`(${(target as any).name}) Entity must define a kind.`);
+        const entityFieldMeta = decoratorMeta.getEntityFieldMetaList(target);
+        const fieldNames = Array.from(entityFieldMeta.keys());
+
+        // check if we have a id column
+        if (!fieldNames.includes("_id")) {
+            throw new TsDatastoreOrmError(`(${(target as any).name}) Entity must define an _id field with property decorator @Field().`);
         }
 
         // create exclude from indexes
         const excludeFromIndexes: string[] = [];
-        for (const [column, entityColumn] of Object.entries(entityColumns)) {
-            if (!entityColumn.index) {
+        for (const [fieldName, entityFieldMetaOptions] of entityFieldMeta.entries()) {
+            if (!entityFieldMetaOptions.index) {
                 // we don't have to exclude id, it's always indexed in ASC
-                if (column !== "id") {
-                    excludeFromIndexes.push(column);
+                if (fieldName !== "_id") {
+                    excludeFromIndexes.push(fieldName);
                 }
 
-            } else if (entityColumn.excludeFromIndexes.length) {
-                for (const subColumn of entityColumn.excludeFromIndexes ) {
+            } else if (entityFieldMetaOptions.excludeFromIndexes.length) {
+                for (const subColumn of entityFieldMetaOptions.excludeFromIndexes ) {
                     excludeFromIndexes.push(`${subColumn}`);
                 }
             }
         }
 
-        // update the meta
-        newEntityMeta.excludeFromIndexes = excludeFromIndexes;
-        datastoreOrm.addEntity(target, newEntityMeta);
+        // add entity meta
+        decoratorMeta.addEntityMeta(target, {
+            kind: options.kind || target.name,
+            namespace: options.namespace === "" ? undefined : options.namespace,
+            excludeFromIndexes,
+            enumerable: options.enumerable || false,
+        });
     };
 }

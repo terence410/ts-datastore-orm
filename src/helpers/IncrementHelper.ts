@@ -1,38 +1,66 @@
-import {DatastoreOrmOperationError} from "..";
+import * as Datastore from "@google-cloud/datastore";
 import {BaseEntity} from "../BaseEntity";
-import {Transaction} from "../Transaction";
-import {IArgvColumn, ITransactionExecuteOptions, ITransactionResponse} from "../types";
+import {TsDatastoreOrmError} from "../errors/TsDatastoreOrmError";
+import {TransactionManager} from "../transactions/TransactionManager";
+import {tsDatastoreOrm} from "../tsDatastoreOrm";
+import {
+    IEntityKeyType,
+    IFieldName, IIncrementHelperParams,
+} from "../types";
 
-export class IncrementHelper<R extends typeof BaseEntity, T extends InstanceType<R>> {
-    constructor(public readonly entity: T) {
+export class IncrementHelper<T extends typeof BaseEntity> {
+    private datastore: Datastore.Datastore;
+    private classObject: T;
+    private namespace: string | undefined;
+    private kind: string;
+    private maxRetry: number;
+    private retryDelay: number;
 
+    constructor(options: IIncrementHelperParams<T>) {
+        this.datastore = options.datastore;
+        this.classObject = options.classObject;
+        this.namespace = options.namespace;
+        this.kind = options.kind;
+        this.maxRetry = options.maxRetry;
+        this.retryDelay = options.retryDelay;
     }
 
-    public async increment(column: IArgvColumn<T>, increment: number = 1, options: Partial<ITransactionExecuteOptions> = {}):
-        Promise<[number, ITransactionResponse]> {
-        const [resultValue, transactionResponse] = await Transaction.execute(async transaction => {
-            const [currentEntity, response] = await transaction
-                .query(this.entity.constructor as any)
-                .filter("__key__", "=", this.entity.getKey())
-                .runOnce();
+    public async increment(id: IEntityKeyType<T>, fieldName: IFieldName<InstanceType<T>>, increment: number = 1): Promise<number> {
+        const key = tsDatastoreOrm.normalizeAndValidateKey(id, this.namespace, this.kind);
 
-            if (currentEntity) {
-                const newValue = (currentEntity as any)[column] + 1 as number;
-                (currentEntity as any)[column] = newValue;
-                transaction.save(currentEntity);
+        const transactionManager = new TransactionManager({
+            datastore: this.datastore,
+            maxRetry: this.maxRetry,
+            retryDelay: this.retryDelay,
+            readOnly: false,
+        });
 
-                return newValue;
-            } else {
-                await transaction.rollback();
+        const result = await transactionManager.start(async session => {
+            const [data] = await session.transaction.get(key);
+
+            if (!data) {
+                throw new TsDatastoreOrmError("(IncrementHelper) Entity not exist.");
             }
-        }, options);
 
-        if (transactionResponse.hasCommitted) {
-            (this.entity as any)[column] = resultValue as number;
-            return [resultValue as number, transactionResponse];
-        } else {
-            throw new DatastoreOrmOperationError(`(IncrementHelper, ${this.entity.constructor.name}) Fail to increment the value on column ${column}.`);
+            if (data[fieldName] !== undefined && typeof data[fieldName] !== "number") {
+                throw new TsDatastoreOrmError("(IncrementHelper) Current Entity field is not a number.");
+            }
 
-        }
+            // update back to the entity
+            const oldValue: number = data[fieldName] || 0;
+            const newValue = oldValue + 1;
+            data[fieldName] = newValue;
+            const updateData = {
+                key,
+                data,
+            };
+
+            // update
+            session.transaction.update(updateData);
+
+            return newValue;
+        });
+
+        return result.value;
     }
 }

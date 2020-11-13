@@ -1,23 +1,23 @@
 import cluster from "cluster";
-import {BaseEntity, Batcher, Column, Entity} from "../index";
+import {BaseEntity, createConnection, Entity, Field} from "../index";
 import {getUsedMemoryInMb} from "../utils";
 
 // entity
-@Entity({kind: "speed"})
+@Entity({kind: "speed2", namespace: "testing"})
 export class Speed extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column({index: true})
+    @Field({index: true})
     public date: Date = new Date();
 
-    @Column({index: true})
+    @Field({index: true})
     public number1: number = 0;
 
-    @Column({index: true})
+    @Field({index: true})
     public number2: number = 0;
 
-    @Column({index: true})
+    @Field({index: true})
     public string1: string = "";
 }
 
@@ -29,7 +29,7 @@ let total = 0;
 let date = new Date();
 
 async function startCluster() {
-    const totalWorker = 30;
+    const totalWorker = 1;
     console.log(`Total worker: ${totalWorker}`);
     for (let i = 0; i < totalWorker; i++) {
         cluster.fork({workerId: i});
@@ -37,20 +37,24 @@ async function startCluster() {
 }
 
 async function startWorker() {
-    const batcher = new Batcher();
     setTimeout(reportWorker, reportDuration);
+
+    const connection = await createConnection({
+        keyFilename: "./datastoreServiceAccount.json",
+    });
+    const repository = connection.getRepository(Speed);
 
     let count = 0;
     while (true) {
         const entities = Array(createBatch).fill(0).map((x, j) => {
-            const entity = Speed.create();
+            const entity = new Speed();
             entity.number1 = count++;
             entity.number2 = count * 10;
             entity.string1 = (100000 + count).toString();
             entity.date.setTime(entity.date.getTime() + j);
             return entity;
         });
-        await batcher.save(entities);
+        await repository.insert(entities);
         total += createBatch;
     }
 }

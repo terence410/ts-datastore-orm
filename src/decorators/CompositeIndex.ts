@@ -1,9 +1,8 @@
-import "reflect-metadata";
-import {datastoreOrm} from "../datastoreOrm";
-import {IEntityCompositeIndex} from "../types";
+import {decoratorMeta} from "../decoratorMeta";
+import {IEntityFieldIndex} from "../types";
 
-export function CompositeIndex(compositeIndex: IEntityCompositeIndex = {}) {
+export function CompositeIndex(fields: IEntityFieldIndex = {}, hasAncestor: boolean = false) {
     return (target: object) => {
-        datastoreOrm.addCompositeIndex(target, compositeIndex);
+        decoratorMeta.addEntityCompositeIndex(target, fields, hasAncestor);
     };
 }

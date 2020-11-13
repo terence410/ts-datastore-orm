@@ -1,6 +1,5 @@
 import { assert, expect } from "chai";
-import {datastoreOrm} from "../src";
-import {Batcher} from "../src/Batcher";
+import {Repository} from "../src/";
 // @ts-ignore
 import {Guild} from "./entities/Guild";
 // @ts-ignore
@@ -10,46 +9,103 @@ import {TaskGroup} from "./entities/TaskGroup";
 // @ts-ignore
 import {User} from "./entities/User";
 // @ts-ignore
-import {beforeCallback} from "./share";
+import {beforeCallback, connection} from "./share";
 
-const batcher = new Batcher();
-
-// before test
 before(beforeCallback);
-
 describe("General Test", () => {
-    it("truncate", async () => {
-        const key1 = datastoreOrm.createKey([User, 1]);
-        await User.truncate();
-        await TaskGroup.truncate();
-        await Task.truncate();
+    let guildRepository: Repository<typeof Guild>;
+    let userRepository: Repository<typeof User>;
+    let taskGroupRepository: Repository<typeof TaskGroup>;
+    let taskRepository: Repository<typeof Task>;
+
+    before(() => {
+        guildRepository = connection.getRepository(Guild);
+        userRepository = connection.getRepository(User);
+        taskGroupRepository = connection.getRepository(TaskGroup);
+        taskRepository = connection.getRepository(Task);
+    });
+    after(async () => {
+        await guildRepository.truncate();
+        await userRepository.truncate();
+        await taskGroupRepository.truncate();
+        await taskRepository.truncate();
     });
 
-    it("create entity", async () => {
+    it("getUrl", async () => {
+        console.log(await userRepository.getUrl());
+    });
+
+    it("new object", async () => {
+        const user = new User();
+        assert.equal(user._kind, "User");
+        assert.equal(user._namespace, "testing");
+        assert.equal(user._kind, userRepository.kind);
+        assert.equal(user._namespace, userRepository.namespace);
+
+        // _kind and _namespace is not enumerable
+        user._kind = "hello";
+        user._namespace = "hello";
+        const keys = Object.keys(user);
+        assert.isFalse(keys.includes("_kind"));
+        assert.isFalse(keys.includes("_namespace"));
+
+        // guild is set to enumerable
+        const guild = new Guild();
+        guild._ancestorKey = user.getKey();
+        assert.containsAllKeys(guild, ["_kind", "_namespace", "_ancestorKey"]);
+    });
+
+    it("getKey", async () => {
+        const user1 = new User();
+        const key1 = user1.getKey();
+        assert.equal(key1.namespace, "testing");
+        assert.equal(key1.namespace, user1._namespace);
+        assert.equal(key1.kind, "User");
+        assert.equal(key1.kind, user1._kind);
+        assert.equal(key1.id, "0");
+        assert.equal(key1.id, user1._id.toString());
+    });
+
+    it("basic operation", async () => {
         // create
         const now = new Date();
         const user = new User();
-        user.id = 999;
         user.number = 100;
-        await user.save();
+        assert.equal(user._id, 0);
+        await userRepository.insert(user);
+        assert.isAtLeast(user._id, 1);
 
         // update
         user.number = 101;
-        await user.save();
+        await userRepository.update(user);
 
-        // deprecated call
-        const date = user.get("date");
-        user.set("date", new Date());
-
-        // to json
-        const json = user.toJSON();
-        const values = user.getValues();
+        const findUser1 = await userRepository.findOne(user._id);
+        assert.deepEqual(findUser1, user);
 
         // delete
-        await user.delete();
+        await userRepository.delete(user);
+
+        const findUser2 = await userRepository.findOne(user._id);
+        assert.isUndefined(findUser2);
     });
 
-    it("create and read entity", async () => {
+    it("generateId", async () => {
+        const user1 = new User();
+        await userRepository.insert(user1);
+        assert.isTrue(user1._id > 0);
+
+        // we assign non number or string, it will still trigger generate id
+        for (const id of [null, undefined, new Date(), false, []]) {
+            const user2 = new User();
+            (user2 as any)._id = id;
+            assert.isUndefined(user2.getKey().id);
+
+            await userRepository.insert(user2);
+            assert.isTrue(user2._id > 0);
+        }
+    });
+
+    it("insert and find entity", async () => {
         // create
         const values = {
             date: new Date(),
@@ -61,202 +117,173 @@ describe("General Test", () => {
             undefined,
             null: null,
         };
-        const user = User.create(values);
-        await user.save();
-        
-        const [foundUser] = await User.find(user.id);
-        assert.isDefined(foundUser);
-        if (foundUser) {
-            assert.deepEqual(user.getValues(), foundUser.getValues());
-            assert.deepEqual(foundUser.getValues(), Object.assign(values, {id: user.id}));
-        }
+        const user = userRepository.create(values);
+        await userRepository.insert(user);
+
+        const findUser = await userRepository.findOne(user._id);
+        assert.isDefined(findUser);
+        assert.deepEqual(findUser, user);
+    });
+
+    it("upsert entity", async () => {
+        const user = userRepository.create();
+        await userRepository.upsert(user);
+
+        // this will do an update
+        user.number = 10;
+        await userRepository.upsert(user);
+
+        // delete
+        await userRepository.delete(user);
+
+        // upserert again
+        await userRepository.upsert(user);
     });
 
     it("create entity with empty space", async () => {
-        const guild1 = Guild.create({id: "  abc  "});
-        assert.equal(guild1.id, "  abc  ");
+        const guild1 = guildRepository.create({_id: "  abc  "});
+        await guildRepository.insert(guild1);
+        assert.equal(guild1._id, "  abc  ");
 
-        const guild2 = Guild.create({id: "  "});
-        assert.equal(guild2.id, "  ");
+        const guild2 = guildRepository.create({_id: "  "});
+        await guildRepository.insert(guild2);
+        assert.equal(guild2._id, "  ");
+
+        const findGuild2 = await guildRepository.findOne(guild2._id);
+        assert.equal(findGuild2!._id, guild2._id);
+    });
+
+    it("merge entity", async () => {
+        const user = userRepository.create();
+        await userRepository.insert(user);
+        await userRepository.merge(user);
     });
 
     it("allocate ids", async () => {
-        const [ids] = await User.allocateIds(10);
-        const users = ids.map(id => User.create({id}));
-        await batcher.save(users);
+        const ids = await userRepository.allocateIds(10);
+        const users = ids.map(_id => userRepository.create({_id}));
+        await userRepository.insert(users);
+
         users.forEach((user, i) => {
-            assert.equal(user.id, ids[i]);
+            assert.equal(user._id, ids[i]);
         });
     });
 
     it("auto generate id", async () => {
-        const user = User.create({number: 5});
-        assert.equal(user.id, 0);
-        await user.save();
-        assert.isAtLeast(user.id, 10000000000);
+        const user = userRepository.create({number: 5});
+        assert.equal(user._id, 0);
+        await userRepository.insert(user);
+        assert.isAtLeast(user._id, 10000000000);
     });
 
-    it("new entity", async () => {
+    it("insert array of entities", async () => {
         const ids = [1, 2, 3, 4, 5];
         const entities = [];
         for (let i = 0; i < ids.length; i++) {
             const entity = new User();
-            entity.id = ids[i];
+            entity._id = ids[i];
             entity.string = "value: " + i;
             entity.array.push(i);
             entity.object = {name: i};
             entity.buffer = Buffer.alloc(i + 1);
-            await entity.save();
             entities.push(entity);
         }
+        await userRepository.insert(entities);
 
         // findOne
-        const [entity1] = await User.find(ids[0]);
+        const entity1 = await userRepository.findOne(ids[0]);
         assert.isDefined(entity1);
 
         // findMany
-        const [entities1] = await User.findMany(ids);
+        const entities1 = await userRepository.findMany(ids);
         assert.equal(entities1.length, ids.length);
 
         // find Many by keys
-        const [entities2] = await User.findMany(entities.map(x => x.getKey()));
+        const entities2 = await userRepository.findMany(entities.map(x => x.getKey()));
         assert.equal(entities2.length, ids.length);
 
         // query
-        const [entities3] = await User
+        const entities3 = await userRepository
             .query()
-            .filter("id", ">=", ids[0])
-            .filter("id", "<=", ids[ids.length - 1])
-            .run();
+            .filter("_id", x => x.ge(ids[0]))
+            .filter("_id", x => x.le(ids[ids.length - 1]))
+            .findMany();
         assert.equal(entities3.length, ids.length);
     });
 
-    it("merge value", async () => {
-        const date = new Date();
-        const values = {
-            number: 123,
-            date: new Date(),
-            string: "abc",
-            array: [1, 2, 3],
-            object: {a: 1, b: 2, c: 3},
-            buffer: Buffer.alloc(5),
-        };
-        const user = User.create(values);
-        await user.save();
-
-        // merge some values
-        const mergeObjects: Array<[string, any]> = [
-            ["date", new Date(123)],
-            ["number", 456],
-            ["string", "xyz"],
-            ["array", [4, 5, 6]],
-            ["object", {x: 4, y: 5, z: 6}],
-            ["buffer", Buffer.alloc(10)],
-        ];
-
-        for (const [key, value] of mergeObjects) {
-            const mergeValues = {[key]: value};
-            await user.merge(mergeValues);
-            assert.equal(user.get(key as any), value);
-
-            const [newUser] = await User.find(user.id);
-            if (newUser) {
-                assert.deepEqual(user.getValues(), newUser.getValues());
-            }
-        }
-    });
-});
-
-describe("General Test: Batcher", () => {
-    it("batch create", async () => {
+    it("batch operations", async () => {
         const total = 100;
         const entities = Array(total).fill(0).map((x, i) => {
-            return User.create({number: i});
+            const user = new User();
+            user.number = i;
+            return user;
         });
 
         // insert
-        await batcher.save(entities);
-        const [users1] = await User.findMany(entities.map(x => x.id));
+        await userRepository.insert(entities);
+        const users1 = await userRepository.findMany(entities.map(x => x._id));
         assert.equal(users1.length, total);
 
         // updates
         entities.forEach(x => {
             x.number = Math.random();
         });
-        await batcher.save(entities);
+        await userRepository.update(entities);
 
         // delete
-        await batcher.delete(entities);
-        const [users2] = await User.findMany(entities.map(x => x.id));
+        const a = await userRepository.delete(entities);
+        const users2 = await userRepository.findMany(entities.map(x => x._id));
         assert.equal(users2.length, 0);
     });
-});
 
-describe("General Test: Ancestors", () => {
-    it("create key", async () => {
-        const key1 = datastoreOrm.createKey([User, 1]);
-        const key2 = datastoreOrm.createKey({namespace: "namespace", path: [User, 1]});
-        const key3 = datastoreOrm.createKey({namespace: "namespace", ancestorKey: key1, path: [User, 1]});
-        const key4 = datastoreOrm.getConnection().key({namespace: "namespace", path: ["kind1", 1, "kind2", 2]});
-        const key5 = User.create({id: 1}).getKey();
-        const key6 = TaskGroup.create({id: 1}).setAncestor(User.create({id: 1})).getKey();
-    });
+    it("ancestor", async () => {
+        const user = userRepository.create();
+        await userRepository.insert(user);
 
-    it("user task", async () => {
-        const user1 = User.create({id: 1000});
-        await user1.save();
+        const taskGroup = taskGroupRepository.create({_ancestorKey: user.getKey(), name: "Group1"});
+        await taskGroupRepository.insert(taskGroup);
 
-        const user2 = User.create({id: 10001});
-        await user2.save();
-
-        const taskGroup1 = TaskGroup.create({id: 1, name: "group 1"});
-        taskGroup1.setAncestor(user1);
-        await taskGroup1.save();
-
-        const taskGroup2 = TaskGroup.create({id: 2, name: "group 2"});
-        taskGroup2.setAncestor(user2);
-        await taskGroup2.save();
-
-        const task1 = Task.create({id: 1, total: 11});
-        task1.setAncestor(taskGroup1);
-        await task1.save();
-
-        const task2 = Task.create({id: 2, total: 12});
-        task2.setAncestor(taskGroup2);
-        await task2.save();
-
-        // query
-        const [taskGroupList1] = await TaskGroup.query().setAncestor(user1).run();
-        assert.equal(taskGroupList1.length, 1);
-
-        const [taskGroupList2] = await TaskGroup.query().filterKey("=", taskGroup1.getKey()).run();
-        assert.equal(taskGroupList2.length, 1);
-
-        const key = datastoreOrm.createKey([User, user1.id, TaskGroup, taskGroup1.id]);
-        const [taskGroupList3] = await TaskGroup.query().filterKey("=", key).run();
-        assert.equal(taskGroupList3.length, 1);
-        
-        // find many
-        const [taskGroups4] = await TaskGroup.findMany({ancestor: user1, ids: [1, 2]});
-        assert.equal(taskGroups4.length, 1);
-
-        const [task3] = await Task.find({ancestor: taskGroup1, id: 1});
-        assert.isDefined(task3);
-
-        if (task3) {
-            const [taskGroup3] = await task3.getAncestor(TaskGroup);
-            const [user3] = await task3.getAncestor(User);
-            assert.isDefined(taskGroup3);
-            assert.isDefined(user3);
-
-            if (taskGroup3 && user3) {
-                assert.equal(task3.getAncestorId(TaskGroup), taskGroup3.id);
-                assert.equal(task3.getAncestorId(User), user3.id);
-            }
+        const totalTasks = 10;
+        const tasks: Task[] = [];
+        for (let i = 0; i < totalTasks; i++) {
+            const task = taskRepository.create({_ancestorKey: taskGroup.getKey(), deadline: new Date()});
+            tasks.push(task);
         }
+        await taskRepository.insert(tasks);
 
-        // get something without ancestor
-        const task4 = Task.create({id: 2, total: 12});
-        assert.throw(() => task4.getAncestorId(User), /The entity has no ancestor/);
+        // getting back all the data
+        for (let i = 0; i < totalTasks; i++) {
+            const findTask1 = await taskRepository.findOne(tasks[i]._id);
+            assert.isUndefined(findTask1);
+
+            const findTask2 = await taskRepository.findOne(tasks[i].getKey());
+            assert.isDefined(findTask2);
+            assert.deepEqual(tasks[i], findTask2);
+
+            const findTask3 = await taskRepository.query()
+                .setAncestorKey(taskGroup.getKey())
+                .filterKey(x => x.eq(tasks[i].getKey())).findOne();
+            assert.isDefined(findTask3);
+
+            // this also works the same
+            const findTask4 = await taskRepository.query()
+                .filterKey(tasks[i].getKey()).findOne();
+            assert.isDefined(findTask4);
+            assert.deepEqual(tasks[i], findTask4);
+
+            const findTask5 = await taskRepository.query()
+                .setAncestorKey(taskGroup.getKey())
+                .filter("_id", tasks[i]._id).findOne();
+            assert.isDefined(findTask5);
+            assert.deepEqual(tasks[i], findTask5);
+
+            const findTaskGroup = await taskGroupRepository.findOne(findTask5!._ancestorKey!);
+            assert.isDefined(findTaskGroup);
+            assert.deepEqual(findTaskGroup, taskGroup);
+
+            const findUser = await userRepository.findOne(findTaskGroup!._ancestorKey!);
+            assert.isDefined(findUser);
+            assert.deepEqual(findUser, user);
+        }
     });
 });
