@@ -15,7 +15,7 @@ TsDatastoreOrm (Typescript Orm wrapper for Google Datastore)
 
 Please check the examples below to check out all the amazing features!
 
-This package has 0 dependencies. You have to install the [@google-cloud/datastore) manually. 
+This package has 0 dependencies. You have to install the [@google-cloud/datastore](https://www.npmjs.com/package/@google-cloud/datastore) manually. 
 ```
 npm install -s @google-cloud/datastore@latest
 ```
@@ -360,9 +360,9 @@ Examples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tr
 | CompositeIndex | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/compositeIndex.test.ts) |
 | Admin | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/admin.test.ts) |
 | TransactionManager | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/transactionManager.test.ts) |
-| LockManager | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/lockManager.test.ts) |
-| IndexResaveHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/indexResaveHelper.test.ts) |
-| IncrementHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/helpers/incrementHelper.test.ts) |
+| LockManager | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/lockManager.test.ts) |
+| IndexResaveHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/indexResaveHelper.test.ts) |
+| IncrementHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/incrementHelper.test.ts) |
 
 # Useful links
 - https://googleapis.dev/nodejs/datastore/6.0.0/index.html
