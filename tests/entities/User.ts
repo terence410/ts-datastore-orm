@@ -1,33 +1,33 @@
 import {BaseEntity} from "../../src/BaseEntity";
-import {Column} from "../../src/decorators/Column";
 import {Entity} from "../../src/decorators/Entity";
+import {Field} from "../../src/decorators/Field";
 
-@Entity({kind: "User"})
+@Entity({kind: "User", namespace: "testing"})
 export class User extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column()
+    @Field()
     public date: Date = new Date();
 
-    @Column({index: true})
+    @Field({index: true})
     public string: string = "";
 
-    @Column({index: true})
+    @Field({index: true})
     public number: number = 10;
 
-    @Column()
+    @Field()
     public buffer: Buffer = Buffer.alloc(1);
 
-    @Column()
+    @Field()
     public array: number[] = [];
 
-    @Column()
+    @Field()
     public object: any = {};
 
-    @Column()
+    @Field()
     public undefined: undefined = undefined;
 
-    @Column()
+    @Field()
     public null: null = null;
 }

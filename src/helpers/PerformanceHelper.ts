@@ -1,3 +1,4 @@
+/** @internal */
 export  class PerformanceHelper {
     private _timer: [number, number] = [0, 0];
 

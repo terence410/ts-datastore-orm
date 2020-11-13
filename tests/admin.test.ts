@@ -1,29 +1,37 @@
 import { assert, expect } from "chai";
-import {datastoreStats} from "../src";
 // @ts-ignore
-import {User} from "./entities/User";
-// @ts-ignore
-import {beforeCallback} from "./share";
+import {beforeCallback, beforeCallback, connection} from "./share";
 
-// before test
 before(beforeCallback);
-
 describe("Admin Test", () => {
-    it("namespaces and kinds", async () => {
-        const namespaces = await datastoreStats.getNamespaces();
-        assert.isAtLeast(namespaces.length, 1);
+    it("datastore stats", async () => {
+        const meta = connection.getAdmin();
+        const stats = await meta.getStats();
+        assert.isTrue(stats.count > 0);
+
+        const namespaces = await meta.getNamespaces();
+        assert.isArray(namespaces);
+
+        const kinds = await meta.getKinds();
+        assert.isArray(kinds);
+
+        for (const kind of kinds) {
+            const kindStats = meta.getKindStats(kind);
+            assert.isDefined(kindStats);
+        }
 
         for (const namespace of namespaces) {
-            const kinds = await datastoreStats.getKinds(namespace);
-            assert.isAtLeast(kinds.length, 1);
-        }
-    });
+            const namespaceKinds = await meta.getNamespaceKinds(namespace);
+            assert.isArray(namespaceKinds);
 
-    it("get stats", async () => {
-        const total1 = await datastoreStats.getTotal();
-        const total2 = await datastoreStats.getTotal({namespace: "testing"});
-        const total3 = await datastoreStats.getEntityTotal(User);
-        const properties1 = await datastoreStats.getEntityProperties(User);
-        const properties2 = await datastoreStats.getProperties({namespace: "testing", kind: "user"});
+            for (const kind of namespaceKinds) {
+                const namespaceKindStats = await meta.getNamespaceKindStats(namespace, kind);
+                assert.isDefined(namespaceKindStats);
+            }
+
+            // get one of the properties
+            const properties = await meta.getNamespaceKindProperties(namespace, kinds[0]);
+            assert.isArray(properties);
+        }
     });
 });

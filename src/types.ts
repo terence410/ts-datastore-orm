@@ -1,33 +1,13 @@
+import * as Datastore from "@google-cloud/datastore";
+import {Query} from "@google-cloud/datastore/build/src";
 import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import * as DatastoreQuery from "@google-cloud/datastore/build/src/query";
 import {BaseEntity} from "./BaseEntity";
-import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
 
-// region basic
-
-export type IPropType<TObject, TProp extends keyof TObject> = TObject[TProp];
-
-export type IConnectionOptions = {
-    keyFilename?: string;
-    clientEmail?: string;
-    privateKey?: string;
-    defaultNamespace?: string;
-};
-
-// endregion
-
-// region datastore related structure
+// region general
 
 export type IKey = DatastoreEntity.entity.Key;
-export type IOperator = DatastoreQuery.Operator;
 export type IOrderOptions = DatastoreQuery.OrderOptions;
-export type IEntityData = {key: IKey, data: any, excludeFromIndexes: string[]};
-export type ISaveResult = {
-    mutationResults?: Array<{
-        key?: {path?: Array<{id: string, name: string, kind: string}>};
-    }>;
-};
-
 export type IStats = {
     timestamp: Date,
     builtin_index_bytes: number,
@@ -38,151 +18,54 @@ export type IStats = {
     builtin_index_count: number,
     composite_index_count: number,
 };
-
-// endregion
-
-// region response
-
-export type ITransactionResponse = {
-    hasCommitted: boolean;
-    totalRetry: number;
-    executionTime: number;
-    createdEntities: BaseEntity[];
-    updatedEntities: BaseEntity[];
-    deletedEntities: BaseEntity[];
-};
-
-export type IRequestResponse = {
-    executionTime: number;
-};
-
-export type ILockResponse = {
-    totalRetry: number;
-    executionTime: number;
-};
+export type IClassObject = new (...args: any[]) => any;
 
 // endregion
 
 // region decorator
 
-export type IColumns = {[key: string]: IEntityColumn};
-export interface IEntityColumnBase {
-    generateId: boolean;
-    index: boolean;
-    excludeFromIndexes: string[];
-    cast: ((newValue: any, oldValue: any) => any) | null;
-}
-export interface IEntityColumn extends IEntityColumnBase {
-    type: any;
-}
-export type IEntityCompositeIndex = {__ancestor__?: boolean} | {[key: string]: "asc" | "desc"};
-export type IEntityCompositeIndexes = IEntityCompositeIndex[];
-export interface IEntityMetaBase {
-    namespace: string;
-    kind: string;
-    ancestor: object | null;
-    connection: string;
-}
-export interface IEntityMeta extends  IEntityMetaBase {
-    excludeFromIndexes: string[]; // for caching
-}
+export type IEntityMetaOptions = {kind: string, namespace: string | undefined, excludeFromIndexes: string[], enumerable: boolean};
+export type IEntityFieldMetaOptions = {generateId: boolean, index: boolean, excludeFromIndexes: string[]};
+export type IEntityKeyType<T extends typeof BaseEntity> = InstanceType<T> | InstanceType<T>["_id"] | DatastoreEntity.entity.Key ;
+export type IEntityFieldIndex = {_id: "asc" | "desc"} | {[key: string]: "asc" | "desc"};
+export type IEntityCompositeIndex = {fields: IEntityFieldIndex, hasAncestor: boolean};
+export type IEntityCompositeIndexList = IEntityCompositeIndex[];
 
 // endregion
 
-// region events
+// region repository
 
-export interface IQueryStreamEvent<T> {
-    on(type: "data", callback: (entity: T) => void): this;
-    on(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    on(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
-    on(type: "end", callback: () => void): this;
-
-    addListener(type: "data", callback: (entity: T) => void): this;
-    addListener(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    addListener(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
-    addListener(type: "end", callback: () => void): this;
-
-    removeListener(type: "data", callback: (entity: T) => void): this;
-    removeListener(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    removeListener(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
-    removeListener(type: "end", callback: () => void): this;
-
-    once(type: "data", callback: (entity: T) => void): this;
-    once(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    once(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
-    once(type: "end", callback: () => void): this;
-
-    off(type: "data", callback: (entity: T) => void): this;
-    off(type: "info", callback: (info: DatastoreQuery.RunQueryInfo) => void): this;
-    off(type: "error", callback: (error: DatastoreOrmNativeError) => void): this;
-    off(type: "end", callback: () => void): this;
-
-    emit(type: "data", entity: T): void;
-    emit(type: "info", info: DatastoreQuery.RunQueryInfo): void;
-    emit(type: "error", error: DatastoreOrmNativeError): void;
-    emit(type: "end"): void;
-}
-
-// event
-export type IEventsType = "create" | "update" | "delete";
-export interface IEvents<T> {
-    on(type: IEventsType, callback: (entity: T) => void): this;
-    addListener(type: IEventsType, callback: (entity: T) => void): this;
-    removeListener(type: IEventsType, callback: (entity: T) => void): this;
-    once(type: IEventsType, callback: (entity: T) => void): this;
-    off(type: IEventsType, callback: (entity: T) => void): this;
-    emit(type: IEventsType, entity: T): void;
-}
+export type IRepositoryParams<T> = {datastore: Datastore.Datastore, classObject: T, namespace: string | undefined, kind: string};
+export type IDatastoreSaveData = { key: DatastoreEntity.entity.Key, excludeFromIndexes: string[], data: any };
+export type IGetInsertData = { insertData: IDatastoreSaveData, isGenerateId: boolean };
+export type IGetUpdateData = { updateData: IDatastoreSaveData };
 
 // endregion
 
-// region arguments
+// region class params & options
+export type IConnectionOptions = {keyFilename: string } | {clientEmail: string, privateKey: string };
+export type ICreateValues<T extends BaseEntity> = {[P in Exclude<keyof T, "getKey">]?: T[P]};
+export type IFieldName<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntity>;
+export type IFieldNames<T extends BaseEntity> = Array<IFieldName<T>>;
+export type ITransactionManagerOptions = {maxRetry: number, retryDelay: number, readOnly: boolean};
+export type ITransactionManagerParams = {datastore: Datastore.Datastore, maxRetry: number, retryDelay: number, readOnly: boolean};
+export type ILockManagerOptions = {namespace?: string, kind?: string, expiresIn: number, retryDelay?: number, maxRetry?: number};
+export type ILockManagerParams = {datastore: Datastore.Datastore, namespace?: string, kind?: string, expiresIn: number, maxRetry: number, retryDelay: number};
+export type ILockParams<T> = IRepositoryParams<T> & {lockKey: string, expiresIn: number, maxRetry: number, retryDelay: number};
+export type ILockCallback<T extends any> = () => Promise<T>;
+export type ILockResult<T> = { value: T };
+export type IIndexResaveHelperParams<T> = IRepositoryParams<T>;
+export type IIncrementHelperOptions = {maxRetry?: number, retryDelay?: number};
+export type IIncrementHelperParams<T> = IRepositoryParams<T> & {maxRetry: number, retryDelay: number};
 
-export type IArgvId = string | number | IKey;
-export type IArgvValues<T> = {[P in Exclude<keyof T, keyof BaseEntity>]: T[P]};
-export type IArgvColumn<T extends BaseEntity> = Exclude<keyof T, keyof BaseEntity>;
-export type IArgvColumns<T extends BaseEntity> = Array<Exclude<keyof T, keyof BaseEntity>>;
-export type IArgvValue<T extends BaseEntity, K extends keyof IArgvValues<T>> = IArgvValues<T>[K];
-export type ITransactionOptions = {
-    readOnly: boolean;
-    connection: string;
-};
-export type ITransactionDefaultOptions = {
-    maxRetry: number;
-    delay: number;
-};
-export type ITransactionExecuteOptions = ITransactionDefaultOptions & ITransactionOptions;
-export type IArgvCreateKey = {
-    namespace?: string,
-    ancestorKey?: IKey;
-    path: any[];
-};
-export type IArgvFind = {
-    namespace?: string,
-    ancestor?: BaseEntity;
-    id: IArgvId;
-};
-export type IArgvFindMany = {
-    namespace?: string,
-    ancestor?: BaseEntity;
-    ids: IArgvId[];
-};
-export type IArgvAllocateIds = {
-    total: number;
-    namespace: string,
-};
-export type IArgvNamespace = {
-    namespace?: string,
-};
 // endregion
 
-// region helpers
+// region query
 
-export type ILockOptions = {
-    expire: number;
-    maxRetry: number;
-    delay: number;
-    throwReleaseError: boolean;
-};
+export type IBaseQueryParams = {datastore: Datastore.Datastore, namespace: string | undefined, kind: string, query: Query};
+export type IQueryParams<T> = { classObject: T } & IBaseQueryParams;
+export type IStrongTypeQueryOptions = {};
+export type IWeakTypeQueryOptions = {weakType: true};
+export type IFilterValue<T> = T extends Array<infer U> ? (U | U[])  : T;
 
 // endregion

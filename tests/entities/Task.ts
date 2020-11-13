@@ -1,14 +1,15 @@
 import {BaseEntity} from "../../src/BaseEntity";
-import {Column} from "../../src/decorators/Column";
 import {Entity} from "../../src/decorators/Entity";
-// @ts-ignore
-import {TaskGroup} from "./TaskGroup";
+import {Field} from "../../src/decorators/Field";
 
-@Entity({kind: "Task", ancestor: TaskGroup})
+@Entity({kind: "Task", namespace: "testing"})
 export class Task extends BaseEntity {
-    @Column()
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column()
-    public total: number = 0;
+    @Field()
+    public name: string = "";
+
+    @Field()
+    public deadline: Date = new Date();
 }

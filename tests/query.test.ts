@@ -1,95 +1,107 @@
+import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import { assert, expect } from "chai";
-import {BaseEntity, Column, datastoreOrm, Entity} from "../src";
-import {Batcher} from "../src/Batcher";
-import {CompositeIndex} from "../src/decorators/CompositeIndex";
-import {IEntityCompositeIndexes} from "../src/types";
+import {BaseEntity} from "../src/BaseEntity";
+import {Entity} from "../src/decorators/Entity";
+import {Field} from "../src/decorators/Field";
+import {Repository} from "../src/Repository";
 // @ts-ignore
-import {beforeCallback} from "./share";
+import {assertAsyncError, beforeCallback, connection} from "./share";
 
-@CompositeIndex({id: "desc"})
-@CompositeIndex({date1: "desc", string1: "asc"})
-@CompositeIndex({string1: "asc", ["object1.string"]: "desc"})
-@Entity({namespace: "testing", kind: "queryTest"})
-export class QueryTest extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+@Entity({namespace: "testing"})
+class QueryTest extends BaseEntity {
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column({index: true})
+    @Field({index: true})
     public date1: Date = new Date();
 
-    @Column()
+    @Field()
     public date2: Date = new Date();
 
-    @Column({index: true})
+    @Field({index: true})
+    public boolean1: boolean = false;
+
+    @Field({index: true})
     public nullableDate: Date | null = null;
 
-    @Column({index: true})
+    @Field({index: true})
     public string1: string = "";
 
-    @Column()
+    @Field()
     public string2: string = "";
 
-    @Column({index: true})
+    @Field({index: true})
+    public mod: number = 0;
+
+    @Field({index: true})
     public number1: number = 0;
 
-    @Column()
+    @Field()
     public number2: number = 0;
 
-    @Column()
+    @Field({index: true})
     public buffer: Buffer = Buffer.alloc(1);
 
-    @Column({index: true})
+    @Field({index: true})
     public array1: number[] = [];
 
-    @Column()
+    @Field()
     public array2: number[] = [];
 
-    @Column({index: true})
+    @Field({index: true})
     public object1: {string?: string, value?: number} = {};
 
-    @Column({index: true, excludeFromIndexes: ["object2.value"]})
+    @Field({index: true, excludeFromIndexes: ["object2.value"]})
     public object2: {string?: string, value?: number} = {};
 
-    @Column({index: true, excludeFromIndexes: ["objectArray1[].value"]})
+    @Field({index: true, excludeFromIndexes: ["objectArray1[].value"]})
     public objectArray1: Array<{string: string, value: number}> = [];
 }
 
-@CompositeIndex({number: "desc", string: "desc", __ancestor__: false})
-@CompositeIndex({number: "desc"})
-@Entity({namespace: "testing", kind: "queryTestChild", ancestor: QueryTest})
+@Entity({namespace: "testing"})
 export class QueryTestChild extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column({index: true})
+    @Field({index: true})
     public number: number = 0;
 
-    @Column({index: true})
+    @Field({index: true})
     public string: string = "";
 }
 
 const total = 50;
+const mod = 10;
 
 // before test
 before(beforeCallback);
-
 describe("Query Test", () => {
-    it("truncate", async () => {
-        await QueryTest.truncate();
-        await QueryTestChild.truncate();
+    let entityRepository: Repository<typeof QueryTest>;
+    let childRepository: Repository<typeof QueryTestChild>;
+
+    before(() => {
+        entityRepository = connection.getRepository(QueryTest);
+        childRepository = connection.getRepository(QueryTestChild);
+    });
+    after(async () => {
+        await entityRepository.truncate();
+        await childRepository.truncate();
     });
 
-    it("create entities", async () => {
+    before("create entities", async () => {
         const entities: QueryTest[] = [];
         for (let i = 0; i < total; i++) {
             const entity = new QueryTest();
             entity.date1 = new Date();
             entity.date2 = entity.date1;
+            entity.boolean1 = Math.random() > 0.5;
+            entity.mod = i % mod;
             entity.number2 = Math.random();
             entity.number1 = i;
             entity.number2 = Math.random();
             entity.string1 = i.toString();
             entity.string2 = entity.number2.toString();
+            entity.buffer = Buffer.from([i]);
             entity.array1 = [1, 2, 3, 4, 5];
             entity.array2 = [1, 2, 3, 4, 5];
             entity.object1 = {string: i.toString(), value: i};
@@ -97,85 +109,129 @@ describe("Query Test", () => {
             entity.objectArray1 = [{string: i.toString(), value: i}];
             entities.push(entity);
         }
-        const batcher = new Batcher();
-        await batcher.save(entities);
+        await entityRepository.insert(entities);
     });
 
-    it("query: non index", async () => {
-        const number2 = 4;
-        const [entities1] = await QueryTest.query()
-            .filter("number2", ">", number2)
-            .run();
+    it("no index", async () => {
+        const value = 4;
+        const entities1 = await entityRepository.query()
+            .filter("number2", x => x.lt(value))
+            .findMany();
         assert.equal(entities1.length, 0);
 
-        const [entities2] = await QueryTest.query()
+        const entities2 = await entityRepository.query()
             .order("number2", {descending: true})
-            .run();
-        assert.equal(entities1.length, 0);
+            .findMany();
+        assert.equal(entities2.length, 0);
+
+        const entities3 = await entityRepository.query()
+            .order("number1", {descending: true})
+            .findMany();
+        assert.equal(entities3.length, total);
     });
 
-    it("query: simple", async () => {
+    it("findOne with paging", async () => {
         const number1 = 4;
-        const query = QueryTest.query()
-            .filter("number1", ">", number1)
+        const query = entityRepository.query()
+            .filter("number1", x => x.gt(number1))
             .limit(5);
 
         let count = 0;
         while (query.hasNextPage()) {
-            const [entities] = await query.run();
+            const entity = await query.findOne();
+            count += 1;
+        }
+
+        assert.equal(count, total - number1 - 1);
+    });
+
+    it("findMany with paging", async () => {
+        const number1 = 4;
+        const query = entityRepository.query()
+            .filter("number1", x => x.gt(number1))
+            .limit(5);
+
+        let count = 0;
+        while (query.hasNextPage()) {
+            const entities = await query.findMany();
             count += entities.length;
         }
 
         assert.equal(count, total - number1 - 1);
     });
 
-    it("query: with end cursor", async () => {
+    it("endCursor", async () => {
         const number1 = 4;
-        const query1 = QueryTest.query()
-            .filter("number1", ">", number1)
-            .limit(5);
+        const limit = 5;
+        const query1 = entityRepository.query()
+            .filter("number1", x => x.gt(number1))
+            .limit(limit);
 
-        const [entities1] = await query1.run();
+        const entities1 = await query1.findMany();
         const endCursor = query1.getEndCursor();
         assert.isTrue(query1.hasNextPage());
         assert.isNotEmpty(endCursor);
 
         // we continue to run with cursor
-        const query2 = QueryTest.query()
-            .filter("number1", ">", number1)
-            .setEndCursor(endCursor)
-            .limit(5);
+        const query2 = entityRepository.query()
+            .filter("number1", x => x.gt(number1))
+            .setEndCursor(endCursor!)
+            .limit(limit);
 
-        const [entities2] = await query2.run();
+        const entities2 = await query2.findMany();
         assert.isTrue(query2.hasNextPage());
         assert.notEqual(query2.getEndCursor(), endCursor);
 
         // run till the end
         while (query2.hasNextPage()) {
-            await query2.run();
+            await query2.findMany();
         }
         assert.isFalse(query2.hasNextPage());
         const finalEndCursor = query2.getEndCursor();
         assert.isString(endCursor);
 
         // try to use the final cursor
-        const query3 = QueryTest.query()
-            .filter("number1", ">", number1)
-            .setEndCursor(finalEndCursor)
-            .limit(5);
+        const query3 = entityRepository.query()
+            .filter("number1", x => x.gt(number1))
+            .setEndCursor(finalEndCursor!)
+            .limit(limit);
 
-        const [entities3] = await query3.run();
+        const entities3 = await query3.findMany();
         assert.equal(entities3.length, 0);
         assert.isFalse(query3.hasNextPage());
     });
 
-    it("query: order", async () => {
+    it("filter: date", async () => {
+        const query = entityRepository.query()
+            .filter("date1", x => x.lt(new Date()));
+        const entity1 = await query.findOne();
+        assert.isDefined(entity1);
+        assert.match(query.getSql(), /DATETIME/);
+    });
+
+    it("filter: boolean", async () => {
+        const query = entityRepository.query()
+            .filter("boolean1", true);
+        const entity1 = await query.findOne();
+        assert.isDefined(entity1);
+        assert.match(query.getSql(), /true/);
+    });
+
+    it("filter: buffer", async () => {
+        const query = entityRepository.query()
+            .filter("buffer", x => x.gt(Buffer.from([1])));
+        const entity1 = await query.findOne();
+        assert.isDefined(entity1);
+        assert.match(query.getSql(), /BLOB/);
+    });
+
+    it("order", async () => {
         const number1 = 4;
 
         // descending
-        const [entity1] = await QueryTest.query()
+        const entity1 = await entityRepository.query()
             .order("number1", {descending: true})
-            .runOnce();
+            .findOne();
 
         assert.isDefined(entity1);
         if (entity1) {
@@ -184,10 +240,10 @@ describe("Query Test", () => {
 
         // offset
         const offset1 = 5;
-        const [entity2] = await QueryTest.query()
+        const entity2 = await entityRepository.query()
             .order("number1", {descending: false})
             .offset(offset1)
-            .runOnce();
+            .findOne();
 
         assert.isDefined(entity2);
         if (entity2) {
@@ -195,180 +251,142 @@ describe("Query Test", () => {
         }
     });
 
-    it("query: array", async () => {
-        const [entity] = await QueryTest.query()
-            .filterAny("array1", "=", 1)
-            .filterAny("array1", 2)
-            .runOnce();
+    it("filter array", async () => {
+        const entity = await entityRepository.query()
+            .filter("array1", 1)
+            .filter("array1", x => x.eq(2))
+            .findOne();
         assert.isDefined(entity);
     });
 
-    it("query: object", async () => {
+    it("object.value", async () => {
         // object1.string is indexed
-        const [entity1] = await QueryTest.query()
-            .filterAny("object1.value", 0)
-            .runOnce();
+        const entity1 = await entityRepository.query({weakType: true})
+            .filter("object1.value", 0)
+            .findOne();
         assert.isDefined(entity1);
 
-        const [entity2] = await QueryTest.query()
-            .orderAny("object1.value", {descending: true})
-            .runOnce();
+        const entity2 = await entityRepository.query({weakType: true})
+            .order("object1.value", {descending: true})
+            .findOne();
         assert.isDefined(entity2);
         if (entity2) {
             assert.equal(entity2.object1.value, total - 1);
         }
 
         // object2.value is excluded from index
-        const [entity3] = await QueryTest.query()
-            .filterAny("object2.value", 0)
-            .runOnce();
+        const entity3 = await entityRepository.query({weakType: true})
+            .filter("object2.value", 0)
+            .findOne();
         assert.isUndefined(entity3);
     });
 
     it("query: object array", async () => {
         // object1[].string is indexed
-        const [entity1] = await QueryTest.query()
-            .filterAny("objectArray1.string", "0")
-            .runOnce();
+        const entity1 = await entityRepository.query({weakType: true})
+            .filter("objectArray1.string", "0")
+            .findOne();
         assert.isDefined(entity1);
         if (entity1) {
             assert.equal(entity1.objectArray1[0].string, "0");
         }
 
         // object1[].value is not indexed
-        const [entity2] = await QueryTest.query()
-            .filterAny("objectArray1.value", "=", 0)
-            .runOnce();
+        const entity2 = await entityRepository.query({weakType: true})
+            .filter("objectArray1.value", 0)
+            .findOne();
         assert.isUndefined(entity2);
     });
 
-    it("query: key only", async () => {
-        const [entity] = await QueryTest.query()
-            .selectKey()
-            .runOnce();
-        assert.isDefined(entity);
-        
-        if (entity) {
-            entity.number1 = 10;
-            try {
-                await entity.save();
-                assert.isTrue(false);
-            } catch (err) {
-                assert.isTrue(/Entity is read only/.test(err.message));
-            }
+    it("key only query", async () => {
+        const query = entityRepository.selectKeyQuery();
+        const key1 = await query
+            .findOne();
+        assert.isDefined(key1);
+        assert.isTrue(key1!.constructor === DatastoreEntity.entity.Key);
+        assert.match(query.getSql(), /SELECT __key__/);
+
+        const keys1 = await entityRepository.selectKeyQuery().findMany();
+        assert.equal(keys1.length, total);
+
+        const iterator = entityRepository.selectKeyQuery().getAsyncIterator();
+        for await (const keys of iterator) {
+            assert.isArray(keys);
         }
     });
 
-    it("query: stream", async () => {
-        const number1 = 4;
-        const query = QueryTest
-            .query()
-            .filter("number1", ">", number1)
-            .limit(5);
-
-        let count = 0;
-        for (let i = 0; i < 100 && query.hasNextPage(); i++) {
-            await new Promise((resolve, reject) => {
-                const stream = query.runStream()
-                    .on("data", entity => {
-                        count += 1;
-                    })
-                    .on("info", (info) => {
-                        // query info from datastore
-                    })
-                    .on("error", (error) => {
-                        assert.isTrue(false);
-                        reject(error);
-                    })
-                    .on("end", () => {
-                        resolve();
-                    });
-            });
-        }
-
-        assert.equal(count, total - number1 - 1);
+    it("groupBy (need index)", async () => {
+        const entities = await entityRepository.query().groupBy("mod").findMany();
+        assert.equal(entities.length, mod);
     });
 
-    it("query: ancestor", async () => {
-        const [queryTest1] = await new QueryTest().save();
+    it("ancestor", async () => {
+        const entity1 = await entityRepository.insert(new QueryTest());
 
         // ancestor of diff type
-        const [queryTestChild1] = await new QueryTestChild()
-            .setAncestor(queryTest1)
-            .save();
+        const child1 = new QueryTestChild();
+        child1._ancestorKey = entity1.getKey();
+        await childRepository.insert(child1);
 
         // query without ancestor
-        const [queryTestChild2] = await QueryTestChild
+        const findChild1 = await childRepository
             .query()
-            .filter("id", queryTestChild1.id)
-            .runOnce();
-        assert.isUndefined(queryTestChild2);
+            .filter("_id", child1._id)
+            .findOne();
+        assert.isUndefined(findChild1);
 
         // query with diff ancestor
-        const [queryTestChild4] = await QueryTestChild
+        const findChild2 = await childRepository
             .query()
-            .setAncestor(queryTest1)
-            .filter("id", "=", queryTestChild1.id)
-            .runOnce();
-        assert.isDefined(queryTestChild4);
+            .setAncestorKey(entity1.getKey())
+            .filter("_id", child1._id)
+            .findOne();
+        assert.isDefined(findChild2);
+        assert.isDefined(findChild2!._ancestorKey);
 
         // get back the ancestor
-        const [ancestor1] = await queryTestChild1.getAncestor(QueryTest);
-        assert.isDefined(ancestor1);
-        if (ancestor1) {
-            assert.isTrue(ancestor1 instanceof QueryTest);
+        const findEntity1 = await entityRepository.findOne(findChild2!._ancestorKey!);
+        assert.isDefined(findEntity1);
+        if (findEntity1) {
+            assert.isTrue(findEntity1 instanceof QueryTest);
         }
     });
 
-    it("query: sql 1", async () => {
-        const entity = QueryTest.create({nullableDate: null});
-        await entity.save();
-        const query = QueryTest.query().filter("nullableDate", null);
-        assert.equal(query.getSQL(), "SELECT * from `queryTest` WHERE nullableDate = null");
+    it("error: invalid cursor", async () => {
+        await assertAsyncError(async () => {
+            const query = await entityRepository.query().setEndCursor("hello").findMany();
+        }, {message: /invalid encoding/});
+
+        await assertAsyncError(async () => {
+            const iterator = entityRepository.selectKeyQuery().setEndCursor("hello").getAsyncIterator();
+            for await (const entities of iterator) {
+                //
+            }
+        }, {message: /invalid encoding/});
     });
 
-    it("query: sql 2", async () => {
-        const [queryTest1] = await new QueryTest().save();
-
-        // ancestor of diff type
-        const [queryTestChild1] = await new QueryTestChild()
-            .setAncestor(queryTest1)
-            .save();
-
-        const query = QueryTestChild
-            .query()
-            .filter("id", ">=", queryTestChild1.id)
-            .setAncestor(queryTest1);
-        const [entity] = await query.runOnce();
-        assert.isDefined(entity);
+    it("sql 1", async () => {
+        const query = entityRepository.query().filter("nullableDate", null);
+        assert.equal(query.getSql(), "SELECT * from `QueryTest` WHERE nullableDate = null");
     });
 
-    it("query: sql", async () => {
-        const [queryTestChild] = await QueryTestChild.query().runOnce();
+    it("sql 2", async () => {
+        const entity = await entityRepository.create();
 
-        if (queryTestChild) {
-            const [ancestor] = await queryTestChild.getAncestor(QueryTest);
-            const query = QueryTestChild.query()
-                .filterKey(queryTestChild.getKey())
-                .setAncestor(ancestor as any)
-                .selectKey()
-                .groupByAny("string")
-                .order("number", {descending: true})
-                .offset(0)
-                .limit(100);
-            const sql = query.getSQL();
-            assert.match(sql, /SELECT/);
-        }
+        const query = childRepository.query()
+            .filter("_id", 1)
+            .setAncestorKey(entity.getKey())
+            .groupBy("string")
+            .order("number", {descending: true})
+            .offset(0)
+            .limit(100);
+        const sql = query.getSql();
+        assert.equal(sql, "SELECT  DISTINCT ON (string) * from `QueryTestChild` WHERE __key__ = Key(Namespace(\"testing\"), QueryTestChild, 1) AND __key__ HAS ANCESTOR Key(Namespace(\"testing\"), QueryTest, \"0\") ORDER BY number DESC LIMIT 100");
     });
 
-    it("query: sql", async () => {
-        const sql = QueryTestChild.query().filter("id", 1).getSQL();
+    it("sql 3", async () => {
+        const sql = childRepository.query().filter("_id", 1).getSql();
         assert.equal(sql,
-            "SELECT * from `queryTestChild` WHERE __key__ = Key(Namespace(\"testing\"), queryTestChild, 1)");
-    });
-
-    it("export composite index", async () => {
-        const filename = "./index.yaml";
-        datastoreOrm.exportCompositeIndexes(filename, [QueryTest, QueryTestChild]);
+            "SELECT * from `QueryTestChild` WHERE __key__ = Key(Namespace(\"testing\"), QueryTestChild, 1)");
     });
 });

@@ -1,50 +1,64 @@
-import {DatastoreOrmNativeError, DatastoreOrmOperationError} from "..";
+import * as Datastore from "@google-cloud/datastore";
 import {BaseEntity} from "../BaseEntity";
-import {datastoreOrm} from "../datastoreOrm";
-import {IArgvColumns, IArgvNamespace, IRequestResponse} from "../types";
-import {PerformanceHelper} from "./PerformanceHelper";
+import {MAX_ENTITIES} from "../constants";
+import {decoratorMeta} from "../decoratorMeta";
+import {TsDatastoreOrmError} from "../errors/TsDatastoreOrmError";
+import {Query} from "../queries/Query";
+import {tsDatastoreOrm} from "../tsDatastoreOrm";
+import {IFieldName, IFieldNames, IIndexResaveHelperParams} from "../types";
+import {updateStack} from "../utils";
 
 export class IndexResaveHelper<T extends typeof BaseEntity> {
-    constructor(public readonly entityType: T) {
+    private datastore: Datastore.Datastore;
+    private classObject: T;
+    private namespace: string | undefined;
+    private kind: string;
 
+    constructor(options: IIndexResaveHelperParams<T>) {
+        this.datastore = options.datastore;
+        this.classObject = options.classObject;
+        this.namespace = options.namespace;
+        this.kind = options.kind;
     }
 
-    public async resave(columns: IArgvColumns<InstanceType<T>>, options: IArgvNamespace = {}): Promise<[number, IRequestResponse]> {
-        const performanceHelper = new PerformanceHelper().start();
+    public async resave(fieldNames: IFieldName<InstanceType<T>> | IFieldNames<InstanceType<T>>): Promise<number> {
+        const entityFieldMetaList = decoratorMeta.getEntityFieldMetaList(this.classObject);
+        fieldNames = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
 
-        for (const column of columns) {
-            const entityColumn = datastoreOrm.getEntityColumn(this.entityType, column as string);
-            if (!entityColumn || !entityColumn.index) {
-                throw new DatastoreOrmOperationError(`(IndexResaveHelper, ${this.entityType.name}) Column (${column}) is not set to index`);
+        for (const fieldName of fieldNames) {
+            const entityFieldMea = entityFieldMetaList.get(fieldName as string);
+            if (!entityFieldMea || !entityFieldMea.index) {
+                throw new TsDatastoreOrmError(`(IndexResaveHelper) Field "${fieldName}" is not set as index.`);
             }
         }
 
         const batch = 500;
-        const query = this.entityType.query().limit(batch);
-        const namespace = options.namespace || "";
 
-        // set namespace if we have
-        if (namespace) {
-            query.setNamespace(namespace);
-        }
+        const datastoreQuery = this.datastore.createQuery();
+        datastoreQuery.namespace = this.namespace;
+        datastoreQuery.kinds = [this.kind];
+
+        const query = new Query({
+            datastore: this.datastore,
+            classObject: this.classObject,
+            namespace: this.namespace,
+            kind: this.kind,
+            query: datastoreQuery,
+        });
+        query.limit(MAX_ENTITIES);
 
         // we do batch delete to optimize performance
-        const entityMeta = datastoreOrm.getEntityMeta(this.entityType);
-        const datastore = datastoreOrm.getConnection(entityMeta.connection);
         let totalUpdated = 0;
 
-        // friendly error
-        const friendlyErrorStack = datastoreOrm.useFriendlyErrorStack();
-        while (query.hasNextPage()) {
+        for await (const entities of query.getAsyncIterator()) {
             const updateDataList = [];
 
             // query
-            const [entities] = await query.run();
             totalUpdated += entities.length;
 
             // prepare update data
             for (const entity of entities) {
-                const data = columns.reduce((a, b) => Object.assign(a, {[b]: entity.get(b)}), {});
+                const data = fieldNames.reduce((a, b) => Object.assign(a, {[b]: (entity as any)[b]}), {});
                 updateDataList.push({
                     key: entity.getKey(),
                     data,
@@ -52,20 +66,14 @@ export class IndexResaveHelper<T extends typeof BaseEntity> {
             }
 
             // update the only selected columns
+            const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
             try {
-                await datastore.merge(updateDataList);
+                const [mergeResult] = await this.datastore.merge(updateDataList);
             } catch (err) {
-                const error = new DatastoreOrmNativeError(`(IndexResaveHelper, ${this.entityType.name}) Datastore update error. Error: ${err.message}.`,
-                    err.code,
-                    err);
-                if (friendlyErrorStack) {
-                    error.stack = friendlyErrorStack;
-                }
-
-                throw error;
+                throw Object.assign(err, friendlyErrorStack && {stack: updateStack(friendlyErrorStack, err)});
             }
         }
 
-        return [totalUpdated, performanceHelper.readResult()];
+        return totalUpdated;
     }
 }

@@ -1,52 +1,33 @@
 import { assert, expect } from "chai";
-import {BaseEntity, Column, Entity} from "../src";
+import {Field} from "../src/decorators/Field";
+import {Entity} from "../src/decorators/Entity";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
+import {BaseEntity} from "../src/BaseEntity";
+import {Repository} from "../src/Repository";
 // @ts-ignore
-import {beforeCallback} from "./share";
+import {beforeCallback, connection, beforeCallback} from "./share";
 
-function customCast(value: any) {
-    return 1;
-}
-
-@Entity({kind: "performanceTest1"})
+@Entity()
 export class PerformanceTest1 extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 }
 
-@Entity({kind: "performanceTest2"})
+@Entity()
 export class PerformanceTest2 extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column()
+    @Field()
     public string: string = "";
 
-    @Column()
+    @Field()
     public number: number = 0;
 
-    @Column()
+    @Field()
     public boolean: boolean = false;
 
-    @Column()
-    public custom: any = "";
-}
-
-@Entity({kind: "performanceTest3"})
-export class PerformanceTest3 extends BaseEntity {
-    @Column({generateId: true})
-    public id: number = 0;
-
-    @Column({cast: String})
-    public string: string = "";
-
-    @Column({cast: Number})
-    public number: number = 0;
-
-    @Column({cast: Boolean})
-    public boolean: boolean = false;
-
-    @Column({cast: customCast})
+    @Field()
     public custom: any = "";
 }
 
@@ -59,19 +40,23 @@ const values = {
 };
 
 const total = 1000;
-const batch = 1000;
+const batch = 500;
 
 // before test
 before(beforeCallback);
-
 describe("Performance Test", () => {
-    it("truncate", async () => {
-        const [total1] = await PerformanceTest1.truncate();
-        const [total2] = await PerformanceTest2.truncate();
-        const [total3] = await PerformanceTest3.truncate();
-        console.log(`Truncate: PerformanceTest1: ${total1}, PerformanceTest2: ${total2}, PerformanceTest3: ${total3}`);
-    });
+    let repository1: Repository<typeof PerformanceTest1>;
+    let repository2: Repository<typeof PerformanceTest2>;
 
+    before(() => {
+        repository1 = connection.getRepository(PerformanceTest1);
+        repository2 = connection.getRepository(PerformanceTest2);
+    });
+    after(async () => {
+        await repository1.truncate();
+        await repository2.truncate();
+    });
+    
     // 45ms
     it(`create empty entity: ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
@@ -98,40 +83,26 @@ describe("Performance Test", () => {
         console.log(performanceHelper.readResult());
     });
 
-    // 266ms, around 80ms overhead generated from parser
-    it(`create empty entity with parser: ${total * batch}`, async () => {
+    it(`create entity sequentially: ${batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 
-        for (let i = 0; i < batch; i++ ) {
-            for (let j = 0; j < total; j++) {
-                const entity = new PerformanceTest3();
-            }
-        }
-
-        console.log(performanceHelper.readResult());
-    });
-
-    // 1100ms, around 100ms from internal overhead, around 800ms from datastore.key call
-    it(`create empty entity with save operation:  ${total * batch}`, async () => {
-        const performanceHelper = new PerformanceHelper().start();
-
-        for (let i = 0; i < batch; i++ ) {
-            for (let j = 0; j < total; j++) {
-                const entity = new PerformanceTest3();
-                const saveData = entity.getSaveData();
-            }
-        }
-
-        console.log(performanceHelper.readResult());
-    });
-
-    it(`create entity sequentially: ${total}`, async () => {
-        const performanceHelper = new PerformanceHelper().start();
-
-        for (let j = 0; j < total; j++) {
+        for (let i = 0; i < batch; i++) {
             const entity = new PerformanceTest1();
-            await entity.save();
+            await repository1.insert(entity);
         }
+
+        console.log(performanceHelper.readResult());
+    }).timeout(60 * 1000);
+
+    it(`create entity in batch: ${batch}`, async () => {
+        const performanceHelper = new PerformanceHelper().start();
+
+        const entities: PerformanceTest1[] = [];
+        for (let j = 0; j < batch; j++) {
+            const entity = new PerformanceTest1();
+            entities.push(entity);
+        }
+        await repository1.insert(entities);
 
         console.log(performanceHelper.readResult());
     }).timeout(60 * 1000);

@@ -1,51 +1,67 @@
 import { assert, expect } from "chai";
-import {BaseEntity, Column, Entity} from "../src";
+import {Field} from "../src/decorators/Field";
+import {Entity} from "../src/decorators/Entity";
+import {BaseEntity} from "../src/BaseEntity";
+import {Repository} from "../src/Repository";
 // @ts-ignore
-import {beforeCallback} from "./share";
+import {connection, beforeCallback} from "./share";
 
 export class SubClassBase extends BaseEntity {
-    @Column({index: true})
+    @Field({generateId: true})
+    public _id: number = 0;
+
+    @Field({index: true})
     public createdAt: Date = new Date();
+
+    @Field()
+    public updatedAt: Date = new Date();
 }
 
+@Entity({namespace: "testing"})
 export class IntermediateClass extends SubClassBase {
-    @Column({index: true})
-    public updatedAt: Date = new Date();
+    public name: string = "";
 }
 
 @Entity({namespace: "testing", kind: "subClass"})
 export class SubClass extends IntermediateClass {
-    @Column({generateId: true})
-    public id: number = 0;
+    @Field({generateId: true})
+    public _id: number = 0;
 
-    @Column()
+    // override to have index
+    @Field({index: true})
+    public updatedAt: Date = new Date();
+
+    @Field()
     public name: string = "";
 }
 
-// before test
 before(beforeCallback);
-
 describe("Subclass Test", () => {
-    it("truncate", async () => {
-        await SubClass.truncate();
+    let repository1: Repository<typeof SubClass>;
+    before(() => {
+        repository1 = connection.getRepository(SubClass);
     });
+    after(() => repository1.truncate());
 
     it("create entity", async () => {
-        const [entity] = await SubClass.create({name: "Terence", createdAt: new Date(1234)}).save();
-        const [newEntity] = await SubClass.find(entity.id);
-        if (newEntity) {
-            assert.containsAllKeys(newEntity.getValues(), ["createdAt", "updatedAt"]);
-        }
+        const entity = await repository1.create({name: "Terence", createdAt: new Date(1234)});
+        await repository1.insert(entity);
 
-        entity.set("createdAt", new Date());
-        entity.set("updatedAt", new Date());
-        assert.isNumber(entity.get("createdAt").getTime());
-        assert.isNumber(entity.get("updatedAt").getTime());
+        const findEntity = await repository1.findOne(entity._id);
+        assert.containsAllKeys(findEntity!, ["createdAt", "updatedAt"]);
+        assert.isNumber(findEntity!.createdAt.getTime());
+        assert.isNumber(findEntity!.updatedAt.getTime());
 
-        const [entities1] = await SubClass.query().order("createdAt", {descending: true}).run();
+        // check if indexing works
+        const entities1 = await repository1.query()
+            .order("createdAt", {descending: true})
+            .findMany();
         assert.equal(entities1.length, 1);
 
-        const [entities2] = await SubClass.query().order("updatedAt", {descending: true}).run();
-        assert.equal(entities2.length, 1);
+        const entity2 = await repository1
+            .query().
+            order("updatedAt", {descending: true})
+            .findOne();
+        assert.isDefined(entity2);
     });
 });

@@ -1,52 +1,58 @@
 import {BaseEntity} from "./BaseEntity";
-import {Batcher} from "./Batcher";
-import {datastoreOrm} from "./datastoreOrm";
-import {datastoreStats} from "./datastoreStats";
-import {Column} from "./decorators/Column";
+import {CompositeIndexExporter} from "./CompositeIndexExporter";
+import {Connection} from "./Connection";
+import {createConnection} from "./createConnection";
+import {DatastoreAdmin} from "./DatastoreAdmin";
 import {CompositeIndex} from "./decorators/CompositeIndex";
 import {Entity} from "./decorators/Entity";
+import {Field} from "./decorators/Field";
 import {errorCodes} from "./enums/errorCodes";
 import {namespaceStats} from "./enums/namespaceStats";
 import {stats} from "./enums/stats";
-import {DatastoreOrmNativeError} from "./errors/DatastoreOrmNativeError";
-import {DatastoreOrmDecoratorError} from "./errors/DatastoreOrmDecoratorError";
-import {DatastoreOrmError} from "./errors/DatastoreOrmError";
-import {DatastoreOrmLockHelperError} from "./errors/DatastoreOrmLockHelperError";
-import {DatastoreOrmOperationError} from "./errors/DatastoreOrmOperationError";
-import {DescendentHelper} from "./helpers/DescendentHelper";
+import {TsDatastoreOrmError} from "./errors/TsDatastoreOrmError";
 import {IncrementHelper} from "./helpers/IncrementHelper";
 import {IndexResaveHelper} from "./helpers/IndexResaveHelper";
-import {LockHelper} from "./helpers/LockHelper";
-import {PerformanceHelper} from "./helpers/PerformanceHelper";
-import {Query} from "./Query";
-import {Transaction} from "./Transaction";
+import {LockManager} from "./locks/LockManager";
+import {Query} from "./queries/Query";
+import {QueryAsyncIterator} from "./queries/QueryAsyncIterator";
+import {SelectKeyQuery} from "./queries/SelectKeyQuery";
+import {SelectKeyQueryAsyncIterator} from "./queries/SelectKeyQueryAsyncIterator";
+import {Repository} from "./Repository";
+import {Session} from "./transactions/Session";
+import {TransactionManager} from "./transactions/TransactionManager";
+import {tsDatastoreOrm} from "./tsDatastoreOrm";
 import * as types from "./types";
 
 export {
     // core
-    Query,
-    Batcher,
-    Transaction,
-    BaseEntity,
+    createConnection,
+    tsDatastoreOrm,
+
+    // decorators
     CompositeIndex,
-    Column,
+    Field,
     Entity,
-    datastoreOrm,
-    datastoreStats,
-    
-    // Helpers
+
+    // classes
+    BaseEntity,
+    Repository,
+    Connection,
+    LockManager,
+    TransactionManager,
+    Session,
+    CompositeIndexExporter,
+    DatastoreAdmin,
+    Query,
+    SelectKeyQuery,
+    QueryAsyncIterator,
+    SelectKeyQueryAsyncIterator,
+
+    // helpers
     IncrementHelper,
-    DescendentHelper,
-    LockHelper,
-    PerformanceHelper,
     IndexResaveHelper,
-    
+
     // errors
-    DatastoreOrmDecoratorError,
-    DatastoreOrmOperationError,
-    DatastoreOrmLockHelperError,
-    DatastoreOrmNativeError,
-    DatastoreOrmError,
+    TsDatastoreOrmError,
 
     // types & enums
     stats,
