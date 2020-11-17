@@ -1,15 +1,12 @@
-TsDatastoreOrm (Typescript Orm wrapper for Google Datastore)
+# ts-datastore-orm (Typescript Orm wrapper for Google Datastore)
 
 [![NPM version][npm-image]][npm-url]
 [![Test coverage][codecov-image]][codecov-url]
-[![David deps][david-image]][david-url]
 
 [npm-image]: https://img.shields.io/npm/v/ts-datastore-orm.svg
 [npm-url]: https://npmjs.org/package/ts-datastore-orm
-[codecov-image]: https://img.shields.io/codecov/c/github/terence410/ts-datastore-orm.svg?style=flat-square
+[codecov-image]: https://codecov.io/gh/terence410/ts-datastore-orm/branch/develop/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/terence410/ts-datastore-orm
-[david-image]: https://img.shields.io/david/terence410/ts-datastore-orm.svg?style=flat-square
-[david-url]: https://david-dm.org/terence410/ts-datastore-orm
 
 [ts-datastore-orm](https://www.npmjs.com/package/ts-datastore-orm) targets to provide a strong typed and structural ORM feature for Datastore (Firestore in Datastore mode).
 
