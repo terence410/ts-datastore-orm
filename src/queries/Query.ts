@@ -1,4 +1,3 @@
-import * as Datastore from "@google-cloud/datastore";
 import {BaseEntity} from "../BaseEntity";
 import {MAX_ENTITIES} from "../constants";
 import {tsDatastoreOrm} from "../tsDatastoreOrm";
