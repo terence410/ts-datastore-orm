@@ -24,7 +24,7 @@ export class Query<T extends typeof BaseEntity, KT extends BaseEntity> extends B
     public async findOne() {
         const data = await super.findOne();
         if (data) {
-            return tsDatastoreOrm.createEntity(this.classObject, data);
+            return await tsDatastoreOrm.loadEntity(this.classObject, data);
         }
     }
 
@@ -33,7 +33,7 @@ export class Query<T extends typeof BaseEntity, KT extends BaseEntity> extends B
         const entities: Array<InstanceType<T>> = [];
 
         for (const data of results) {
-            const entity = tsDatastoreOrm.createEntity(this.classObject, data);
+            const entity = await tsDatastoreOrm.loadEntity(this.classObject, data);
             entities.push(entity);
         }
 

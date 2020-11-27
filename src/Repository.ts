@@ -31,6 +31,15 @@ export class Repository<T extends typeof BaseEntity> {
         this.kind = options.kind;
     }
 
+    public create(values: ICreateValues<InstanceType<T>> = {}): InstanceType<T> {
+        const entity = new this.classObject() as InstanceType<T>;
+        (entity as any)._kind = this.kind;
+        (entity as any)._namespace = this.namespace;
+
+        Object.assign(entity, values);
+        return entity;
+    }
+
     public async findOne(id: IEntityKeyType<T>) {
         const key = tsDatastoreOrm.normalizeAndValidateKey(id, this.namespace, this.kind);
 
@@ -38,7 +47,7 @@ export class Repository<T extends typeof BaseEntity> {
         try {
             const [response] = await this.datastore.get(key);
             if (response) {
-                return tsDatastoreOrm.createEntity(this.classObject, response);
+                return await tsDatastoreOrm.loadEntity(this.classObject, response);
             }
         } catch (err) {
             throw Object.assign(err, friendlyErrorStack && {stack: updateStack(friendlyErrorStack, err)});
@@ -58,7 +67,7 @@ export class Repository<T extends typeof BaseEntity> {
             const entities: Array<InstanceType<T>> = [];
             const [response] = await this.datastore.get(keys);
             for (const data of response) {
-                const entity = tsDatastoreOrm.createEntity(this.classObject, data);
+                const entity = await tsDatastoreOrm.loadEntity(this.classObject, data);
                 entities.push(entity);
             }
 
@@ -131,15 +140,6 @@ export class Repository<T extends typeof BaseEntity> {
         });
     }
 
-    public create(values: ICreateValues<InstanceType<T>> = {}): InstanceType<T> {
-        const entity = new this.classObject() as InstanceType<T>;
-        (entity as any)._kind = this.kind;
-        (entity as any)._namespace = this.namespace;
-
-        Object.assign(entity, values);
-        return entity;
-    }
-
     public async allocateIds(total: number): Promise<number[]> {
         const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
         try {
@@ -160,24 +160,25 @@ export class Repository<T extends typeof BaseEntity> {
         return await this._internalInsert(entities, false);
     }
 
-    public insertWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): P {
+    public insertWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): void {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind, false);
         session.insert(entities);
-        return entities;
     }
 
     public async upsert<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P): Promise<P> {
         return await this._internalInsert(entities, true);
     }
 
-    public upsertWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): P {
+    public upsertWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): void {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind, false);
         session.upsert(entities);
-        return entities;
     }
 
     public async update<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P): Promise<P> {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind);
+
+        // validate then run hook
+        await tsDatastoreOrm.runHookOfBeforeUpdate(entities);
 
         const updateDataList: any[] = [];
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
@@ -195,38 +196,44 @@ export class Repository<T extends typeof BaseEntity> {
         return entities;
     }
 
-    public updateWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): P {
+    public updateWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): void {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind);
         session.update(entities);
-        return entities;
     }
 
-    public async merge<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P): Promise<P> {
-        tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind);
-
-        const updateDataList: any[] = [];
-        for (const entity of Array.isArray(entities) ? entities : [entities]) {
-            const {updateData} = tsDatastoreOrm.getUpdateData(entity);
-            updateDataList.push(updateData);
-        }
-
-        const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
-        try {
-            const [updateResult] = await this.datastore.merge(updateDataList);
-            return entities;
-        } catch (err) {
-            throw Object.assign(err, friendlyErrorStack && {stack: updateStack(friendlyErrorStack, err)});
-        }
-    }
+    // Remarks: merge is not support to avoid confusion
+    // public async merge<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P): Promise<P> {
+    //     tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind);
+    //
+    //     const updateDataList: any[] = [];
+    //     for (const entity of Array.isArray(entities) ? entities : [entities]) {
+    //         const {updateData} = tsDatastoreOrm.getUpdateData(entity);
+    //         updateDataList.push(updateData);
+    //     }
+    //
+    //     const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
+    //     try {
+    //         const [updateResult] = await this.datastore.merge(updateDataList);
+    //         return entities;
+    //     } catch (err) {
+    //         throw Object.assign(err, friendlyErrorStack && {stack: updateStack(friendlyErrorStack, err)});
+    //     }
+    // }
 
     public async delete<P extends IEntityKeyType<T> | Array<IEntityKeyType<T>>>(entities: P): Promise<P> {
-        let keys: DatastoreEntity.entity.Key[] = [];
+        const keys: DatastoreEntity.entity.Key[] = [];
 
-        if (Array.isArray(entities)) {
-            keys = tsDatastoreOrm.normalizeAndValidateKeys(entities, this.namespace, this.kind);
-        } else {
-            const key = tsDatastoreOrm.normalizeAndValidateKey(entities, this.namespace, this.kind);
+        const newEntities: Array<IEntityKeyType<T>> = Array.isArray(entities) ? entities : [entities];
+        for (const entity of newEntities) {
+            const key = tsDatastoreOrm.normalizeAndValidateKey(entity, this.namespace, this.kind);
             keys.push(key);
+        }
+
+        // validate then run hook
+        for (const entity of newEntities) {
+            if (entity instanceof BaseEntity) {
+                await tsDatastoreOrm.runHookOfBeforeDelete(entity);
+            }
         }
 
         const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
@@ -238,16 +245,14 @@ export class Repository<T extends typeof BaseEntity> {
         }
     }
 
-    public deleteWithSession<P extends IEntityKeyType<T> | Array<IEntityKeyType<T>>>(entities: P, session: Session): P {
-        if (Array.isArray(entities)) {
-            const keys = tsDatastoreOrm.normalizeAndValidateKeys(entities, this.namespace, this.kind);
-            session.delete(keys);
-        } else {
-            const key = tsDatastoreOrm.normalizeAndValidateKey(entities, this.namespace, this.kind);
-            session.delete(key);
+    public deleteWithSession<P extends IEntityKeyType<T> | Array<IEntityKeyType<T>>>(entities: P, session: Session): void {
+        // validate the entities first
+        const newEntities: Array<IEntityKeyType<T>> = Array.isArray(entities) ? entities : [entities];
+        for (const entity of newEntities) {
+            tsDatastoreOrm.normalizeAndValidateKey(entity, this.namespace, this.kind);
         }
 
-        return entities;
+        session.delete(entities);
     }
 
     public async truncate() {
@@ -315,6 +320,12 @@ export class Repository<T extends typeof BaseEntity> {
             }
 
             insertDataList.push(insertData);
+        }
+
+        if (isUpsert) {
+            await tsDatastoreOrm.runHookOfBeforeUpsert(entities);
+        } else {
+            await tsDatastoreOrm.runHookOfBeforeInsert(entities);
         }
 
         const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();

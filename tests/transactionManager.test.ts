@@ -1,12 +1,12 @@
 import { assert, expect } from "chai";
-import {Field} from "../src/decorators/Field";
-import {Entity} from "../src/decorators/Entity";
-import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {BaseEntity} from "../src/BaseEntity";
+import {Entity} from "../src/decorators/Entity";
+import {Field} from "../src/decorators/Field";
+import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {Repository} from "../src/Repository";
 import {timeout} from "../src/utils";
 // @ts-ignore
-import {assertAsyncError, connection, beforeCallback} from "./share";
+import {assertAsyncError, beforeCallback, connection} from "./share";
 
 @Entity({namespace: "testing", kind: "TransactionTest"})
 export class TransactionManagerTest extends BaseEntity {

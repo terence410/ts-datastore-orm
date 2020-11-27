@@ -14,6 +14,7 @@
     "test:subclass": "mocha --exit --timeout 30000 -r ts-node/register tests/subclass.test.ts",
     "test:errors": "mocha --exit --timeout 30000 -r ts-node/register tests/errors.test.ts",
     "test:admin": "mocha --exit --timeout 30000 -r ts-node/register tests/admin.test.ts",
+    "test:hook": "mocha --exit --timeout 30000 -r ts-node/register tests/hook.test.ts",
     "test:transactionManager": "mocha --exit --timeout 30000 -r ts-node/register tests/transactionManager.test.ts",
     "test:lockManager": "mocha --exit --timeout 30000 -r ts-node/register tests/lockManager.test.ts",
     "test:helper:incrementHelper": "mocha --exit --timeout 30000 -r ts-node/register tests/incrementHelper.test.ts",
@@ -33,7 +34,8 @@
     "mocha": "^6.2.2",
     "nyc": "^15.0.0",
     "ts-node": "^8.10.1",
-    "typescript": "^3.9.2"
+    "typescript": "^3.9.2",
+    "class-validator": "^0.12.2"
   },
   "repository": {
     "type": "git",

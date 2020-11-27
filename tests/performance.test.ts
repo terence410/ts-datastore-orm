@@ -1,16 +1,30 @@
 import { assert, expect } from "chai";
-import {Field} from "../src/decorators/Field";
-import {Entity} from "../src/decorators/Entity";
-import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
+import {validate} from "class-validator";
+import {tsDatastoreOrm} from "../src";
 import {BaseEntity} from "../src/BaseEntity";
+import {Entity} from "../src/decorators/Entity";
+import {Field} from "../src/decorators/Field";
+import {AfterLoad} from "../src/decorators/hooks/AfterLoad";
+import {BeforeInsert} from "../src/decorators/hooks/BeforeInsert";
+import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {beforeCallback, connection, beforeCallback} from "./share";
+import {beforeCallback, beforeCallback, connection} from "./share";
 
 @Entity()
 export class PerformanceTest1 extends BaseEntity {
     @Field({generateId: true})
     public _id: number = 0;
+
+    @BeforeInsert()
+    private async beforeInsert() {
+        //
+    }
+
+    @AfterLoad()
+    private async afterLoad() {
+        //
+    }
 }
 
 @Entity()
@@ -57,7 +71,6 @@ describe("Performance Test", () => {
         await repository2.truncate();
     });
     
-    // 45ms
     it(`create empty entity: ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 
@@ -67,10 +80,28 @@ describe("Performance Test", () => {
             }
         }
 
-        console.log(performanceHelper.readResult());
+        const {executionTime} = performanceHelper.readResult();
+        console.log(`executionTime: ${executionTime}ms, per item: ${executionTime / total / batch}ms`);
     });
 
-    // 200ms, around 160ms generated from getEntityColumn
+    it(`create empty entity (with hook): ${total * batch}`, async () => {
+        const performanceHelper = new PerformanceHelper().start();
+
+        for (let i = 0; i < batch; i++ ) {
+            const entities = [];
+            for (let j = 0; j < total; j++) {
+                const entity = new PerformanceTest1();
+                entities.push(entity);
+            }
+
+            // hook check
+            await tsDatastoreOrm.runHookOfBeforeInsert(entities);
+        }
+
+        const {executionTime} = performanceHelper.readResult();
+        console.log(`executionTime: ${executionTime}ms, per item: ${executionTime / total / batch}ms`);
+    });
+
     it(`create empty entity with default values:  ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 
@@ -80,7 +111,8 @@ describe("Performance Test", () => {
             }
         }
 
-        console.log(performanceHelper.readResult());
+        const {executionTime} = performanceHelper.readResult();
+        console.log(`executionTime: ${executionTime}ms, per item: ${executionTime / total / batch}ms`);
     });
 
     it(`create entity sequentially: ${batch}`, async () => {
@@ -91,7 +123,8 @@ describe("Performance Test", () => {
             await repository1.insert(entity);
         }
 
-        console.log(performanceHelper.readResult());
+        const {executionTime} = performanceHelper.readResult();
+        console.log(`executionTime: ${executionTime}ms, per item: ${executionTime / batch}ms`);
     }).timeout(60 * 1000);
 
     it(`create entity in batch: ${batch}`, async () => {
@@ -104,6 +137,7 @@ describe("Performance Test", () => {
         }
         await repository1.insert(entities);
 
-        console.log(performanceHelper.readResult());
+        const {executionTime} = performanceHelper.readResult();
+        console.log(`executionTime: ${executionTime}ms, per item: ${executionTime / batch}ms`);
     }).timeout(60 * 1000);
 });

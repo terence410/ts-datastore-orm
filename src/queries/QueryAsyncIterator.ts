@@ -40,7 +40,7 @@ export class QueryAsyncIterator<T extends typeof BaseEntity> {
                         if (results.length) {
                             const entities: Array<InstanceType<T>> = [];
                             for (const data of results) {
-                                const entity = tsDatastoreOrm.createEntity(this.classObject, data);
+                                const entity = await tsDatastoreOrm.loadEntity(this.classObject, data);
                                 entities.push(entity);
                             }
 

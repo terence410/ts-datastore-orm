@@ -3,11 +3,19 @@ import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import {BaseEntity} from "../BaseEntity";
 import {TsDatastoreOrmError} from "../errors/TsDatastoreOrmError";
 import {tsDatastoreOrm} from "../tsDatastoreOrm";
-import {IGetInsertData} from "../types";
+import {IEntityKeyType, IGetInsertData} from "../types";
 
 export class Session {
     public readonly transaction: Datastore.Transaction;
+
+    // prevent duplicate
     private readonly generateIdEntities: Map<BaseEntity, DatastoreEntity.entity.Key> = new Map();
+
+    // hook use
+    private readonly insertEntities: BaseEntity[] = [];
+    private readonly upsertEntities: BaseEntity[] = [];
+    private readonly updateEntities: BaseEntity[] = [];
+    private readonly deleteEntities: BaseEntity[] = [];
 
     constructor(options: {transaction: Datastore.Transaction}) {
         this.transaction = options.transaction;
@@ -23,7 +31,7 @@ export class Session {
     public async findOne<T extends typeof BaseEntity>(classObject: T, key: DatastoreEntity.entity.Key) {
         const [data] = await this.transaction.get(key);
         if (data) {
-            return tsDatastoreOrm.createEntity(classObject, data);
+            return await tsDatastoreOrm.loadEntity(classObject, data);
         }
     }
 
@@ -33,7 +41,7 @@ export class Session {
         const entities: Array<InstanceType<T>> = [];
         if (results) {
             for (const data of results) {
-                const entity = tsDatastoreOrm.createEntity(classObject, data);
+                const entity = await tsDatastoreOrm.loadEntity(classObject, data);
                 entities.push(entity);
             }
         }
@@ -46,6 +54,9 @@ export class Session {
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
             const {isGenerateId, insertData} = this._internalInsertOne(entity);
             this.transaction.insert(insertData);
+
+            // hook use
+            this.insertEntities.push(entity);
         }
     }
 
@@ -54,6 +65,9 @@ export class Session {
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
             const {isGenerateId, insertData} = this._internalInsertOne(entity);
             this.transaction.upsert(insertData);
+
+            // hook use
+            this.upsertEntities.push(entity);
         }
     }
 
@@ -62,13 +76,22 @@ export class Session {
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
             const {updateData} = tsDatastoreOrm.getUpdateData(entity);
             this.transaction.update(updateData);
+
+            // hook use
+            this.updateEntities.push(entity);
         }
     }
 
     /** @internal */
-    public delete<T extends BaseEntity>(keys: DatastoreEntity.entity.Key | DatastoreEntity.entity.Key[]) {
-        for (const key of Array.isArray(keys) ? keys : [keys]) {
+
+    public delete<P extends IEntityKeyType<typeof BaseEntity> | Array<IEntityKeyType<typeof BaseEntity>>>(entities: P): void {
+        for (const entity of (Array.isArray(entities) ? entities : [entities])) {
+            const key = tsDatastoreOrm.normalizeAsKey(entity, entity._namespace, entity._kind);
             this.transaction.delete(key);
+
+            if (entity instanceof BaseEntity) {
+                this.deleteEntities.push(entity);
+            }
         }
     }
 
@@ -80,6 +103,8 @@ export class Session {
     /** @internal */
     public async commit() {
         if (!this.transaction.skipCommit) {
+            await this._runHooksOfBefore();
+
             const [response] = await this.transaction.commit();
             const mutationResults = response.mutationResults!;
 
@@ -92,7 +117,13 @@ export class Session {
 
     public async rollback() {
         await this.transaction.rollback();
+    }
 
+    private async _runHooksOfBefore() {
+        await tsDatastoreOrm.runHookOfBeforeInsert(this.insertEntities);
+        await tsDatastoreOrm.runHookOfBeforeUpsert(this.upsertEntities);
+        await tsDatastoreOrm.runHookOfBeforeUpdate(this.updateEntities);
+        await tsDatastoreOrm.runHookOfBeforeDelete(this.deleteEntities);
     }
 
     private _internalInsertOne<T extends BaseEntity>(entity: T): IGetInsertData {

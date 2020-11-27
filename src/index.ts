@@ -6,6 +6,11 @@ import {DatastoreAdmin} from "./DatastoreAdmin";
 import {CompositeIndex} from "./decorators/CompositeIndex";
 import {Entity} from "./decorators/Entity";
 import {Field} from "./decorators/Field";
+import {AfterLoad} from "./decorators/hooks/AfterLoad";
+import {BeforeDelete} from "./decorators/hooks/BeforeDelete";
+import {BeforeInsert} from "./decorators/hooks/BeforeInsert";
+import {BeforeUpdate} from "./decorators/hooks/BeforeUpdate";
+import {BeforeUpsert} from "./decorators/hooks/BeforeUpsert";
 import {errorCodes} from "./enums/errorCodes";
 import {namespaceStats} from "./enums/namespaceStats";
 import {stats} from "./enums/stats";
@@ -32,6 +37,11 @@ export {
     CompositeIndex,
     Field,
     Entity,
+    AfterLoad,
+    BeforeInsert,
+    BeforeUpsert,
+    BeforeUpdate,
+    BeforeDelete,
 
     // classes
     BaseEntity,

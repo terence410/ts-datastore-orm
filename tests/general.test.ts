@@ -153,12 +153,6 @@ describe("General Test", () => {
         assert.equal(findGuild2!._id, guild2._id);
     });
 
-    it("merge entity", async () => {
-        const user = userRepository.create();
-        await userRepository.insert(user);
-        await userRepository.merge(user);
-    });
-
     it("allocate ids", async () => {
         const ids = await userRepository.allocateIds(10);
         const users = ids.map(_id => userRepository.create({_id}));
