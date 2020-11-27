@@ -117,7 +117,13 @@ export class BaseQuery<KT extends BaseEntity> {
     }
 
     public order<K extends keyof KT>(fieldName: K, orderOptions?: IOrderOptions) {
-        this.query.order(fieldName as string, orderOptions);
+        if (fieldName === "_id") {
+            this.query.order("__key__", orderOptions);
+
+        } else {
+            this.query.order(fieldName as string, orderOptions);
+        }
+
         return this;
     }
 

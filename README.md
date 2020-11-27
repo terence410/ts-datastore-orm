@@ -40,7 +40,8 @@ Basically there is no significant overhead compared with native nodejs-datastore
 
 # Example: define Entity
 ```typescript
-import { BaseEntity, CompositeIndex, CompositeIndexExporter, createConnection, Entity, Field, tsDatastoreOrm, TsDatastoreOrmError } from "ts-datastore-orm";
+import { BaseEntity, CompositeIndex, CompositeIndexExporter, createConnection, Entity, Field, 
+tsDatastoreOrm, TsDatastoreOrmError, BeforeDelete, BeforeInsert, BeforeUpdate, BeforeUpsert, AfterLoad} from "ts-datastore-orm";
 
 @CompositeIndex({_id: "desc"})
 @Entity({namespace: "testing", kind: "User", enumerable: true})
@@ -85,6 +86,15 @@ export class TaskGroup extends BaseEntity {
 
     @Field()
     public number: number = 0;
+
+    @AfterLoad()
+    @BeforeInsert()
+    @BeforeUpsert()
+    @BeforeUpdate()
+    @BeforeDelete()
+    public async hook(type: string) {
+        // you can update the entity after certain events happened
+    }
 }
 ```
 
@@ -358,6 +368,7 @@ Examples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tr
 | Admin | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/admin.test.ts) |
 | TransactionManager | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/transactionManager.test.ts) |
 | LockManager | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/lockManager.test.ts) |
+| Hook | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/hook.test.ts) |
 | IndexResaveHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/indexResaveHelper.test.ts) |
 | IncrementHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/incrementHelper.test.ts) |
 

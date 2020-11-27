@@ -8,13 +8,13 @@ type IEntity = {
 };
 
 export class CompositeIndexExporter {
-    public entities: IEntity[] = [];
+    private _entities: IEntity[] = [];
 
     public addEntity(classObjects: typeof BaseEntity, options?: {kind: string}): void;
     public addEntity(classObjects: Array<typeof  BaseEntity>): void;
     public addEntity(classObjects: typeof BaseEntity | Array<typeof  BaseEntity>, options?: {kind: string}) {
         for (const classObject of Array.isArray(classObjects) ? classObjects: [classObjects]) {
-            this.entities.push({
+            this._entities.push({
                 classObject,
                 kind: options?.kind,
             });
@@ -24,7 +24,7 @@ export class CompositeIndexExporter {
     public getYaml() {
         let yaml = "indexes:\n";
 
-        for (const entity of this.entities) {
+        for (const entity of this._entities) {
             const entityMeta = decoratorMeta.getEntityMeta(entity.classObject);
             const compositeIndexList = decoratorMeta.getEntityCompositeIndexList(entity.classObject);
             const kind = entity.kind || entityMeta.kind;

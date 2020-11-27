@@ -10,6 +10,11 @@ class DecoratorMeta {
     public entityMetaMap = new Map<object, IEntityMetaOptions>();
     public entityFieldMetaListMap = new Map<object, Map<string, IEntityFieldMetaOptions>>();
     public compositeIndexListMap = new Map<object, IEntityCompositeIndexList>();
+    public entityHookOfBeforeInsertMap = new Map<object, string | symbol>();
+    public entityHookOfBeforeUpsertMap = new Map<object, string | symbol>();
+    public entityHookOfBeforeUpdateMap = new Map<object, string | symbol>();
+    public entityHookOfBeforeDeleteMap = new Map<object, string | symbol>();
+    public entityHookOfAfterLoadMap = new Map<object, string | symbol>();
 
     public addEntityMeta(classObject: object, options: IEntityMetaOptions) {
         this.entityMetaMap.set(classObject, options);
@@ -72,6 +77,46 @@ class DecoratorMeta {
     public getEntityFieldNames(classObject: object): string[] {
         const map = this.entityFieldMetaListMap.get(classObject)!;
         return Array.from(map.keys());
+    }
+
+    public addHookOfBeforeInsert(classObject: object, propertyKey: string | symbol) {
+        this.entityHookOfBeforeInsertMap.set(classObject, propertyKey);
+    }
+
+    public getHookOfBeforeInsert(classObject: object) {
+        return this.entityHookOfBeforeInsertMap.get(classObject);
+    }
+
+    public addHookOfBeforeUpsert(classObject: object, propertyKey: string | symbol) {
+        this.entityHookOfBeforeUpsertMap.set(classObject, propertyKey);
+    }
+
+    public getHookOfBeforeUpsert(classObject: object) {
+        return this.entityHookOfBeforeUpsertMap.get(classObject);
+    }
+
+    public addHookOfBeforeUpdate(classObject: object, propertyKey: string | symbol) {
+        this.entityHookOfBeforeUpdateMap.set(classObject, propertyKey);
+    }
+
+    public getHookOfBeforeUpdate(classObject: object) {
+        return this.entityHookOfBeforeUpdateMap.get(classObject);
+    }
+
+    public addHookOfBeforeDelete(classObject: object, propertyKey: string | symbol) {
+        this.entityHookOfBeforeDeleteMap.set(classObject, propertyKey);
+    }
+
+    public getHookOfBeforeDelete(classObject: object) {
+        return this.entityHookOfBeforeDeleteMap.get(classObject);
+    }
+
+    public addHookOfAfterLoad(classObject: object, propertyKey: string | symbol) {
+        this.entityHookOfAfterLoadMap.set(classObject, propertyKey);
+    }
+
+    public getHookOfAfterLoad(classObject: object) {
+        return this.entityHookOfAfterLoadMap.get(classObject);
     }
 
     public isGenerateId(classObject: object) {

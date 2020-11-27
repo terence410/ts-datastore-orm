@@ -1,4 +1,15 @@
-import { BaseEntity, CompositeIndex, CompositeIndexExporter, createConnection, Entity, Field, tsDatastoreOrm, TsDatastoreOrmError } from "./src/index";
+import {
+    AfterLoad,
+    BaseEntity,
+    BeforeDelete, BeforeInsert, BeforeUpdate, BeforeUpsert,
+    CompositeIndex,
+    CompositeIndexExporter,
+    createConnection,
+    Entity,
+    Field,
+    tsDatastoreOrm,
+    TsDatastoreOrmError,
+} from "./src/index";
 
 @CompositeIndex({_id: "desc"})
 @Entity({namespace: "testing", kind: "User", enumerable: true})
@@ -43,6 +54,15 @@ export class TaskGroup extends BaseEntity {
 
     @Field()
     public number: number = 0;
+
+    @AfterLoad()
+    @BeforeInsert()
+    @BeforeUpsert()
+    @BeforeUpdate()
+    @BeforeDelete()
+    public async hook(type: string) {
+        // you can update the entity after certain events happened
+    }
 }
 
 async function generalExamples() {

@@ -75,7 +75,7 @@ class TsDatastoreOrm {
     }
 
     /** @internal */
-    public createEntity<T extends typeof BaseEntity>(classObject: T, data: any): InstanceType<T> {
+    public async loadEntity<T extends typeof BaseEntity>(classObject: T, data: any): Promise<InstanceType<T>> {
         const key = data[DatastoreEntity.entity.KEY_SYMBOL] as DatastoreEntity.entity.Key;
         const entityFields = decoratorMeta.getEntityFieldMetaList(classObject);
         const entity = new classObject() as InstanceType<T>;
@@ -99,6 +99,8 @@ class TsDatastoreOrm {
         if (key.parent) {
             entity._ancestorKey = key.parent;
         }
+
+        await this.runHookOfAfterLoad(entity);
 
         return entity;
     }
@@ -167,6 +169,53 @@ class TsDatastoreOrm {
         }
     }
 
+    /** @internal */
+    public async runHookOfBeforeInsert(entities: BaseEntity | BaseEntity[]) {
+        for (const entity of (Array.isArray(entities) ? entities : [entities])) {
+            const hook = decoratorMeta.getHookOfBeforeInsert(entity.constructor);
+            if (hook) {
+                await (entity as any)[hook]("beforeInsert");
+            }
+        }
+    }
+
+    /** @internal */
+    public async runHookOfBeforeUpsert(entities: BaseEntity | BaseEntity[]) {
+        for (const entity of (Array.isArray(entities) ? entities : [entities])) {
+            const hook = decoratorMeta.getHookOfBeforeUpsert(entity.constructor);
+            if (hook) {
+                await (entity as any)[hook]("beforeUpsert");
+            }
+        }
+    }
+
+    /** @internal */
+    public async runHookOfBeforeUpdate(entities: BaseEntity | BaseEntity[]) {
+        for (const entity of (Array.isArray(entities) ? entities : [entities])) {
+            const hook = decoratorMeta.getHookOfBeforeUpdate(entity.constructor);
+            if (hook) {
+                await (entity as any)[hook]("beforeUpdate");
+            }
+        }
+    }
+
+    /** @internal */
+    public async runHookOfBeforeDelete(entities: BaseEntity | BaseEntity[]) {
+        for (const entity of (Array.isArray(entities) ? entities : [entities])) {
+            const hook = decoratorMeta.getHookOfBeforeDelete(entity.constructor);
+            if (hook) {
+                await (entity as any)[hook]("beforeDelete");
+            }
+        }
+    }
+
+    /** @internal */
+    public async runHookOfAfterLoad(entity: BaseEntity) {
+        const hook = decoratorMeta.getHookOfAfterLoad(entity.constructor);
+        if (hook) {
+            await (entity as any)[hook]("afterLoad");
+        }
+    }
 }
 
 export const tsDatastoreOrm = new TsDatastoreOrm();
