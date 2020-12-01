@@ -75,13 +75,23 @@ export class HookClass2 extends BaseEntity {
     }
 }
 
+@Entity({namespace: "testing", enumerable: true})
+export class ExtendClass extends HookClass2 {
+    @AfterLoad()
+    public async newAfterLoad(type: string) {
+        this.states.push("newAfterLoad");
+    }
+}
+
 before(beforeCallback);
 describe("Hook Test", () => {
     let repository1: Repository<typeof HookClass1>;
     let repository2: Repository<typeof HookClass2>;
+    let repository3: Repository<typeof ExtendClass>;
     before(() => {
         repository1 = connection.getRepository(HookClass1);
         repository2 = connection.getRepository(HookClass2);
+        repository3 = connection.getRepository(ExtendClass);
     });
     after(() => repository1.truncate());
     after(() => repository2.truncate());
@@ -110,6 +120,19 @@ describe("Hook Test", () => {
 
         assert.deepEqual(entity.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "beforeDelete" ]);
         assert.deepEqual(findEntity!.states, [ "afterLoad"]);
+    });
+
+    it("all hooks 3 (extended class)", async () => {
+        const entity = repository3.create();
+        await repository3.insert(entity);
+        await repository3.upsert(entity);
+        await repository3.update(entity);
+
+        const findEntity = await repository3.findOne(entity._id);
+        await repository3.delete(entity);
+
+        assert.deepEqual(entity.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "beforeDelete" ]);
+        assert.deepEqual(findEntity!.states, [ "newAfterLoad"]);
     });
 
     it("transaction", async () => {
