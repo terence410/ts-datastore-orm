@@ -95,7 +95,7 @@ describe("Performance Test", () => {
             }
 
             // hook check
-            await tsDatastoreOrm.runHookOfBeforeInsert(entities);
+            tsDatastoreOrm.runHookOfBeforeInsert(entities);
         }
 
         const {executionTime} = performanceHelper.readResult();

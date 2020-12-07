@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {IsDate, Length, validate, validateOrReject} from "class-validator";
+import {IsDate, Length, validateSync} from "class-validator";
 import {BaseEntity} from "../src/BaseEntity";
 import {Entity} from "../src/decorators/Entity";
 import {Field} from "../src/decorators/Field";
@@ -28,32 +28,32 @@ export class HookClass1 extends BaseEntity {
     public states: string[] = [];
 
     @BeforeInsert()
-    private async beforeInsert() {
+    public beforeInsert() {
         this.states.push("beforeInsert");
 
-        const errors = await validate(this);
+        const errors = validateSync(this);
         if (errors.length) {
             throw new Error(JSON.stringify(errors.map(x => x.constraints)));
         }
     }
 
     @BeforeUpsert()
-    private async beforeUpsert() {
+    public beforeUpsert() {
         this.states.push("beforeUpsert");
     }
 
     @BeforeUpdate()
-    private async beforeUpdate() {
+    public beforeUpdate() {
         this.states.push("beforeUpdate");
     }
 
     @AfterLoad()
-    private async afterLoad() {
+    public afterLoad() {
         this.states.push("afterLoad");
     }
 
     @BeforeDelete()
-    public async beforeDelete() {
+    public beforeDelete() {
         this.states.push("beforeDelete");
     }
 }
@@ -70,8 +70,16 @@ export class HookClass2 extends BaseEntity {
     @BeforeUpsert()
     @BeforeUpdate()
     @BeforeDelete()
-    public async hook(type: string) {
+    public hook(type: string) {
         this.states.push(type);
+    }
+}
+
+@Entity({namespace: "testing", enumerable: true})
+export class ExtendClass extends HookClass2 {
+    @AfterLoad()
+    public newAfterLoad(type: string) {
+        this.states.push("newAfterLoad");
     }
 }
 
@@ -79,9 +87,11 @@ before(beforeCallback);
 describe("Hook Test", () => {
     let repository1: Repository<typeof HookClass1>;
     let repository2: Repository<typeof HookClass2>;
+    let repository3: Repository<typeof ExtendClass>;
     before(() => {
         repository1 = connection.getRepository(HookClass1);
         repository2 = connection.getRepository(HookClass2);
+        repository3 = connection.getRepository(ExtendClass);
     });
     after(() => repository1.truncate());
     after(() => repository2.truncate());
@@ -110,6 +120,19 @@ describe("Hook Test", () => {
 
         assert.deepEqual(entity.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "beforeDelete" ]);
         assert.deepEqual(findEntity!.states, [ "afterLoad"]);
+    });
+
+    it("all hooks 3 (extended class)", async () => {
+        const entity = repository3.create();
+        await repository3.insert(entity);
+        await repository3.upsert(entity);
+        await repository3.update(entity);
+
+        const findEntity = await repository3.findOne(entity._id);
+        await repository3.delete(entity);
+
+        assert.deepEqual(entity.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "beforeDelete" ]);
+        assert.deepEqual(findEntity!.states, [ "newAfterLoad"]);
     });
 
     it("transaction", async () => {

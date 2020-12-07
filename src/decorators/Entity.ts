@@ -5,7 +5,8 @@ import {IEntityMetaOptions} from "../types";
 
 export function Entity(options: Partial<IEntityMetaOptions> = {}) {
     return (target: any) => {
-        // it has a subclass, add all it's column
+
+        // we search the subclass decorators as well
         let subClassTarget = Object.getPrototypeOf(target);
         while (true) {
             // no more sub class
@@ -14,6 +15,7 @@ export function Entity(options: Partial<IEntityMetaOptions> = {}) {
             }
 
             if (subClassTarget !== BaseEntity) {
+                // copy the fields from subclass
                 if (decoratorMeta.hasEntityFieldMetaList(subClassTarget)) {
                     const subClassEntityFieldMeta = decoratorMeta.getEntityFieldMetaList(subClassTarget);
                     for (const [fieldName, entityFieldMetaOptions] of subClassEntityFieldMeta.entries()) {
@@ -22,14 +24,16 @@ export function Entity(options: Partial<IEntityMetaOptions> = {}) {
                         }
                     }
                 }
+
+                // copy the hooks from subclass
+                decoratorMeta.mergeHooks(target, subClassTarget);
             }
 
             // continue to find sub class
             subClassTarget = Object.getPrototypeOf(subClassTarget);
         }
 
-        // get existing entity columns
-
+        // check if has id
         if (!decoratorMeta.hasEntityFieldMetaList(target)) {
             throw new TsDatastoreOrmError(`(${(target as any).name}) Entity must define an _id field with property decorator @Field().`);
         }

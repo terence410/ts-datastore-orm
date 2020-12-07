@@ -119,6 +119,18 @@ class DecoratorMeta {
         return this.entityHookOfAfterLoadMap.get(classObject);
     }
 
+    public mergeHooks(classObject: object, subClassObject: object) {
+        for (const map of [this.entityHookOfAfterLoadMap, this.entityHookOfBeforeInsertMap,
+            this.entityHookOfBeforeUpsertMap, this.entityHookOfBeforeUpdateMap, this.entityHookOfBeforeDeleteMap]) {
+            if (!map.has(classObject)) {
+                const propertyKey = map.get(subClassObject);
+                if (propertyKey) {
+                    map.set(classObject, propertyKey);
+                }
+            }
+        }
+    }
+
     public isGenerateId(classObject: object) {
         const map = this.entityFieldMetaListMap.get(classObject)!;
         const fieldMap = map.get("_id");

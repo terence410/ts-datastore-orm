@@ -178,7 +178,7 @@ export class Repository<T extends typeof BaseEntity> {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind);
 
         // validate then run hook
-        await tsDatastoreOrm.runHookOfBeforeUpdate(entities);
+        tsDatastoreOrm.runHookOfBeforeUpdate(entities);
 
         const updateDataList: any[] = [];
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
@@ -232,7 +232,7 @@ export class Repository<T extends typeof BaseEntity> {
         // validate then run hook
         for (const entity of newEntities) {
             if (entity instanceof BaseEntity) {
-                await tsDatastoreOrm.runHookOfBeforeDelete(entity);
+                tsDatastoreOrm.runHookOfBeforeDelete(entity);
             }
         }
 
@@ -323,9 +323,9 @@ export class Repository<T extends typeof BaseEntity> {
         }
 
         if (isUpsert) {
-            await tsDatastoreOrm.runHookOfBeforeUpsert(entities);
+            tsDatastoreOrm.runHookOfBeforeUpsert(entities);
         } else {
-            await tsDatastoreOrm.runHookOfBeforeInsert(entities);
+            tsDatastoreOrm.runHookOfBeforeInsert(entities);
         }
 
         const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();

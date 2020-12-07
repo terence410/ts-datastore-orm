@@ -170,50 +170,50 @@ class TsDatastoreOrm {
     }
 
     /** @internal */
-    public async runHookOfBeforeInsert(entities: BaseEntity | BaseEntity[]) {
+    public runHookOfBeforeInsert(entities: BaseEntity | BaseEntity[]) {
         for (const entity of (Array.isArray(entities) ? entities : [entities])) {
             const hook = decoratorMeta.getHookOfBeforeInsert(entity.constructor);
             if (hook) {
-                await (entity as any)[hook]("beforeInsert");
+                (entity as any)[hook]("beforeInsert");
             }
         }
     }
 
     /** @internal */
-    public async runHookOfBeforeUpsert(entities: BaseEntity | BaseEntity[]) {
+    public runHookOfBeforeUpsert(entities: BaseEntity | BaseEntity[]) {
         for (const entity of (Array.isArray(entities) ? entities : [entities])) {
             const hook = decoratorMeta.getHookOfBeforeUpsert(entity.constructor);
             if (hook) {
-                await (entity as any)[hook]("beforeUpsert");
+                (entity as any)[hook]("beforeUpsert");
             }
         }
     }
 
     /** @internal */
-    public async runHookOfBeforeUpdate(entities: BaseEntity | BaseEntity[]) {
+    public runHookOfBeforeUpdate(entities: BaseEntity | BaseEntity[]) {
         for (const entity of (Array.isArray(entities) ? entities : [entities])) {
             const hook = decoratorMeta.getHookOfBeforeUpdate(entity.constructor);
             if (hook) {
-                await (entity as any)[hook]("beforeUpdate");
+                (entity as any)[hook]("beforeUpdate");
             }
         }
     }
 
     /** @internal */
-    public async runHookOfBeforeDelete(entities: BaseEntity | BaseEntity[]) {
+    public runHookOfBeforeDelete(entities: BaseEntity | BaseEntity[]) {
         for (const entity of (Array.isArray(entities) ? entities : [entities])) {
             const hook = decoratorMeta.getHookOfBeforeDelete(entity.constructor);
             if (hook) {
-                await (entity as any)[hook]("beforeDelete");
+                (entity as any)[hook]("beforeDelete");
             }
         }
     }
 
     /** @internal */
-    public async runHookOfAfterLoad(entity: BaseEntity) {
+    public runHookOfAfterLoad(entity: BaseEntity) {
         const hook = decoratorMeta.getHookOfAfterLoad(entity.constructor);
         if (hook) {
-            await (entity as any)[hook]("afterLoad");
+            (entity as any)[hook]("afterLoad");
         }
     }
 }
