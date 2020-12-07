@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {IsDate, Length, validate, validateOrReject} from "class-validator";
+import {IsDate, Length, validateSync} from "class-validator";
 import {BaseEntity} from "../src/BaseEntity";
 import {Entity} from "../src/decorators/Entity";
 import {Field} from "../src/decorators/Field";
@@ -28,32 +28,32 @@ export class HookClass1 extends BaseEntity {
     public states: string[] = [];
 
     @BeforeInsert()
-    private async beforeInsert() {
+    public beforeInsert() {
         this.states.push("beforeInsert");
 
-        const errors = await validate(this);
+        const errors = validateSync(this);
         if (errors.length) {
             throw new Error(JSON.stringify(errors.map(x => x.constraints)));
         }
     }
 
     @BeforeUpsert()
-    private async beforeUpsert() {
+    public beforeUpsert() {
         this.states.push("beforeUpsert");
     }
 
     @BeforeUpdate()
-    private async beforeUpdate() {
+    public beforeUpdate() {
         this.states.push("beforeUpdate");
     }
 
     @AfterLoad()
-    private async afterLoad() {
+    public afterLoad() {
         this.states.push("afterLoad");
     }
 
     @BeforeDelete()
-    public async beforeDelete() {
+    public beforeDelete() {
         this.states.push("beforeDelete");
     }
 }
@@ -70,7 +70,7 @@ export class HookClass2 extends BaseEntity {
     @BeforeUpsert()
     @BeforeUpdate()
     @BeforeDelete()
-    public async hook(type: string) {
+    public hook(type: string) {
         this.states.push(type);
     }
 }
@@ -78,7 +78,7 @@ export class HookClass2 extends BaseEntity {
 @Entity({namespace: "testing", enumerable: true})
 export class ExtendClass extends HookClass2 {
     @AfterLoad()
-    public async newAfterLoad(type: string) {
+    public newAfterLoad(type: string) {
         this.states.push("newAfterLoad");
     }
 }

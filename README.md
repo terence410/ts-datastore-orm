@@ -92,7 +92,7 @@ export class TaskGroup extends BaseEntity {
     @BeforeUpsert()
     @BeforeUpdate()
     @BeforeDelete()
-    public async hook(type: string) {
+    public hook(type: string) {
         // you can update the entity after certain events happened
     }
 }

@@ -103,7 +103,7 @@ export class Session {
     /** @internal */
     public async commit() {
         if (!this.transaction.skipCommit) {
-            await this._runHooksOfBefore();
+            this._runHooksOfBefore();
 
             const [response] = await this.transaction.commit();
             const mutationResults = response.mutationResults!;
@@ -119,11 +119,11 @@ export class Session {
         await this.transaction.rollback();
     }
 
-    private async _runHooksOfBefore() {
-        await tsDatastoreOrm.runHookOfBeforeInsert(this.insertEntities);
-        await tsDatastoreOrm.runHookOfBeforeUpsert(this.upsertEntities);
-        await tsDatastoreOrm.runHookOfBeforeUpdate(this.updateEntities);
-        await tsDatastoreOrm.runHookOfBeforeDelete(this.deleteEntities);
+    private _runHooksOfBefore() {
+        tsDatastoreOrm.runHookOfBeforeInsert(this.insertEntities);
+        tsDatastoreOrm.runHookOfBeforeUpsert(this.upsertEntities);
+        tsDatastoreOrm.runHookOfBeforeUpdate(this.updateEntities);
+        tsDatastoreOrm.runHookOfBeforeDelete(this.deleteEntities);
     }
 
     private _internalInsertOne<T extends BaseEntity>(entity: T): IGetInsertData {
