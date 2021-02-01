@@ -51,6 +51,8 @@ export class Session {
 
     /** @internal */
     public insert<T extends BaseEntity>(entities: T | T[]) {
+        tsDatastoreOrm.runHookOfBeforeInsert(entities);
+
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
             const {isGenerateId, insertData} = this._internalInsertOne(entity);
             this.transaction.insert(insertData);
@@ -62,6 +64,8 @@ export class Session {
 
     /** @internal */
     public upsert<T extends BaseEntity>(entities: T | T[]) {
+        tsDatastoreOrm.runHookOfBeforeUpsert(entities);
+
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
             const {isGenerateId, insertData} = this._internalInsertOne(entity);
             this.transaction.upsert(insertData);
@@ -73,6 +77,8 @@ export class Session {
 
     /** @internal */
     public update<T extends BaseEntity>(entities: T | T[]) {
+        tsDatastoreOrm.runHookOfBeforeUpdate(entities);
+
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
             const {updateData} = tsDatastoreOrm.getUpdateData(entity);
             this.transaction.update(updateData);
@@ -85,11 +91,14 @@ export class Session {
     /** @internal */
 
     public delete<P extends IEntityKeyType<typeof BaseEntity> | Array<IEntityKeyType<typeof BaseEntity>>>(entities: P): void {
+
         for (const entity of (Array.isArray(entities) ? entities : [entities])) {
             const key = tsDatastoreOrm.normalizeAsKey(entity, entity._namespace, entity._kind);
             this.transaction.delete(key);
 
             if (entity instanceof BaseEntity) {
+                tsDatastoreOrm.runHookOfBeforeDelete(entity);
+
                 this.deleteEntities.push(entity);
             }
         }
@@ -103,8 +112,6 @@ export class Session {
     /** @internal */
     public async commit() {
         if (!this.transaction.skipCommit) {
-            this._runHooksOfBefore();
-
             const [response] = await this.transaction.commit();
             const mutationResults = response.mutationResults!;
 
@@ -117,13 +124,6 @@ export class Session {
 
     public async rollback() {
         await this.transaction.rollback();
-    }
-
-    private _runHooksOfBefore() {
-        tsDatastoreOrm.runHookOfBeforeInsert(this.insertEntities);
-        tsDatastoreOrm.runHookOfBeforeUpsert(this.upsertEntities);
-        tsDatastoreOrm.runHookOfBeforeUpdate(this.updateEntities);
-        tsDatastoreOrm.runHookOfBeforeDelete(this.deleteEntities);
     }
 
     private _internalInsertOne<T extends BaseEntity>(entity: T): IGetInsertData {
