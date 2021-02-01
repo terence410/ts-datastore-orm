@@ -25,6 +25,7 @@ export class HookClass1 extends BaseEntity {
     @Field()
     public name: string = "";
 
+    @Field()
     public states: string[] = [];
 
     @BeforeInsert()
@@ -63,6 +64,7 @@ export class HookClass2 extends BaseEntity {
     @Field({generateId: true})
     public _id: number = 0;
 
+    @Field()
     public states: string[] = [];
 
     @AfterLoad()
@@ -106,7 +108,7 @@ describe("Hook Test", () => {
         await repository1.delete(entity);
 
         assert.deepEqual(entity.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "beforeDelete" ]);
-        assert.deepEqual(findEntity!.states, [ "afterLoad"]);
+        assert.deepEqual(findEntity!.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "afterLoad"]);
     });
 
     it("all hooks 2", async () => {
@@ -119,7 +121,7 @@ describe("Hook Test", () => {
         await repository2.delete(entity);
 
         assert.deepEqual(entity.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "beforeDelete" ]);
-        assert.deepEqual(findEntity!.states, [ "afterLoad"]);
+        assert.deepEqual(findEntity!.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "afterLoad"]);
     });
 
     it("all hooks 3 (extended class)", async () => {
@@ -132,7 +134,7 @@ describe("Hook Test", () => {
         await repository3.delete(entity);
 
         assert.deepEqual(entity.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "beforeDelete" ]);
-        assert.deepEqual(findEntity!.states, [ "newAfterLoad"]);
+        assert.deepEqual(findEntity!.states, [ "beforeInsert", "beforeUpsert", "beforeUpdate", "newAfterLoad"]);
     });
 
     it("transaction", async () => {
@@ -157,7 +159,7 @@ describe("Hook Test", () => {
         });
 
         const values = result.value.map(x => x!.states);
-        assert.deepEqual(values, [["beforeInsert"], ["beforeUpsert"], ["afterLoad", "beforeUpdate"], ["afterLoad", "beforeDelete"]]);
+        assert.deepEqual(values, [["beforeInsert"], ["beforeUpsert"], ["beforeInsert", "afterLoad", "beforeUpdate"], ["beforeInsert", "afterLoad", "beforeDelete"]]);
     });
 
     it("auto validate before insert", async () => {

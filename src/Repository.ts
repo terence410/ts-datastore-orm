@@ -307,6 +307,12 @@ export class Repository<T extends typeof BaseEntity> {
         const insertDataList: any[] = [];
         const generateEntities: Map<BaseEntity, DatastoreEntity.entity.Key> = new Map();
 
+        if (isUpsert) {
+            tsDatastoreOrm.runHookOfBeforeUpsert(entities);
+        } else {
+            tsDatastoreOrm.runHookOfBeforeInsert(entities);
+        }
+
         for (const entity of Array.isArray(entities) ? entities : [entities]) {
             const {isGenerateId, insertData} = tsDatastoreOrm.getInsertData(entity);
 
@@ -320,12 +326,6 @@ export class Repository<T extends typeof BaseEntity> {
             }
 
             insertDataList.push(insertData);
-        }
-
-        if (isUpsert) {
-            tsDatastoreOrm.runHookOfBeforeUpsert(entities);
-        } else {
-            tsDatastoreOrm.runHookOfBeforeInsert(entities);
         }
 
         const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
