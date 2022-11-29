@@ -373,6 +373,7 @@ Examples are in the [`tests/`](https://github.com/terence410/ts-datastore-orm/tr
 | IncrementHelper | [source code](https://github.com/terence410/ts-datastore-orm/blob/master/tests/incrementHelper.test.ts) |
 
 # Useful links
+- https://googleapis.dev/nodejs/datastore/7.0.0/index.html
 - https://googleapis.dev/nodejs/datastore/6.0.0/index.html
 - https://cloud.google.com/datastore/docs/
 - https://www.npmjs.com/package/@google-cloud/datastore
