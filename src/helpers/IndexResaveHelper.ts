@@ -28,7 +28,7 @@ export class IndexResaveHelper<T extends typeof BaseEntity> {
         for (const fieldName of fieldNames) {
             const entityFieldMea = entityFieldMetaList.get(fieldName as string);
             if (!entityFieldMea || !entityFieldMea.index) {
-                throw new TsDatastoreOrmError(`(IndexResaveHelper) Field "${fieldName}" is not set as index.`);
+                throw new TsDatastoreOrmError(`(IndexResaveHelper) Field "${fieldName.toString()}" is not set as index.`);
             }
         }
 
