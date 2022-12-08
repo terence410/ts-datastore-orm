@@ -10,7 +10,7 @@ import {BeforeUpdate} from "../src/decorators/hooks/BeforeUpdate";
 import {BeforeUpsert} from "../src/decorators/hooks/BeforeUpsert";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {assertAsyncError, beforeCallback, connection} from "./share";
+import {assertAsyncError, initializeConnection, connection} from "./share";
 
 @Entity({namespace: "testing", enumerable: true})
 export class HookClass1 extends BaseEntity {
@@ -85,7 +85,7 @@ export class ExtendClass extends HookClass2 {
     }
 }
 
-before(beforeCallback);
+before(initializeConnection);
 describe("Hook Test", () => {
     let repository1: Repository<typeof HookClass1>;
     let repository2: Repository<typeof HookClass2>;

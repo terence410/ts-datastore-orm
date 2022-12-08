@@ -4,7 +4,7 @@ import {Entity} from "../src/decorators/Entity";
 import {Field} from "../src/decorators/Field";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {assertAsyncError, assertTsDatastoreOrmError, beforeCallback, connection} from "./share";
+import {assertAsyncError, assertTsDatastoreOrmError, initializeConnection, connection} from "./share";
 
 @Entity()
 class TestEntity extends BaseEntity {
@@ -30,7 +30,7 @@ class GenerateIdEntity extends BaseEntity {
     public string: string = "";
 }
 
-before(beforeCallback);
+before(initializeConnection);
 describe("Error Tests", () => {
     let repository: Repository<typeof TestEntity>;
     let generateIdRepository: Repository<typeof GenerateIdEntity>;

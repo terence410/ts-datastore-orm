@@ -6,7 +6,7 @@ import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {Repository} from "../src/Repository";
 import {timeout} from "../src/utils";
 // @ts-ignore
-import {assertAsyncError, beforeCallback, connection} from "./share";
+import {assertAsyncError, initializeConnection, connection} from "./share";
 
 @Entity({namespace: "testing", kind: "TransactionTest"})
 export class TransactionManagerTest extends BaseEntity {
@@ -33,7 +33,7 @@ export class TransactionTestChild extends BaseEntity {
 }
 
 // before test
-before(beforeCallback);
+before(initializeConnection);
 describe("Transaction Test", () => {
     let entityRepository: Repository<typeof TransactionManagerTest>;
     let childRepository: Repository<typeof TransactionTestChild>;
@@ -128,7 +128,7 @@ describe("Transaction Test", () => {
                 entityRepository.updateWithSession(findEntity1!, session);
                 await timeout(100);
             });
-            
+
             return result;
         };
 

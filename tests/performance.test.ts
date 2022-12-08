@@ -9,7 +9,7 @@ import {BeforeInsert} from "../src/decorators/hooks/BeforeInsert";
 import {PerformanceHelper} from "../src/helpers/PerformanceHelper";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {beforeCallback, beforeCallback, connection} from "./share";
+import {initializeConnection, initializeConnection, connection} from "./share";
 
 @Entity()
 export class PerformanceTest1 extends BaseEntity {
@@ -57,7 +57,7 @@ const total = 1000;
 const batch = 500;
 
 // before test
-before(beforeCallback);
+before(initializeConnection);
 describe("Performance Test", () => {
     let repository1: Repository<typeof PerformanceTest1>;
     let repository2: Repository<typeof PerformanceTest2>;
@@ -70,7 +70,7 @@ describe("Performance Test", () => {
         await repository1.truncate();
         await repository2.truncate();
     });
-    
+
     it(`create empty entity: ${total * batch}`, async () => {
         const performanceHelper = new PerformanceHelper().start();
 

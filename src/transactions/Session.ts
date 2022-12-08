@@ -1,15 +1,14 @@
 import * as Datastore from "@google-cloud/datastore";
-import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import {BaseEntity} from "../BaseEntity";
 import {TsDatastoreOrmError} from "../errors/TsDatastoreOrmError";
 import {tsDatastoreOrm} from "../tsDatastoreOrm";
-import {IEntityKeyType, IGetInsertData} from "../types";
+import {IEntityKeyType, IGetInsertData, IKey} from "../types";
 
 export class Session {
     public readonly transaction: Datastore.Transaction;
 
     // prevent duplicate
-    private readonly generateIdEntities: Map<BaseEntity, DatastoreEntity.entity.Key> = new Map();
+    private readonly generateIdEntities: Map<BaseEntity, IKey> = new Map();
 
     // hook use
     private readonly insertEntities: BaseEntity[] = [];
@@ -22,13 +21,13 @@ export class Session {
     }
 
     /** @internal */
-    public async allocateIds(key: DatastoreEntity.entity.Key, total: number): Promise<number[]> {
+    public async allocateIds(key: IKey, total: number): Promise<number[]> {
         const [ids] = await this.transaction.allocateIds(key, total);
         return ids.map(x => Number(x.id));
     }
 
     /** @internal */
-    public async findOne<T extends typeof BaseEntity>(classObject: T, key: DatastoreEntity.entity.Key) {
+    public async findOne<T extends typeof BaseEntity>(classObject: T, key: IKey) {
         const [data] = await this.transaction.get(key);
         if (data) {
             return await tsDatastoreOrm.loadEntity(classObject, data);
@@ -36,9 +35,9 @@ export class Session {
     }
 
     /** @internal */
-    public async findMany<T extends typeof BaseEntity>(classObject: T, keys: DatastoreEntity.entity.Key[]) {
+    public async findMany<T extends typeof BaseEntity>(classObject: T, keys: IKey[]) {
         const [results] = await this.transaction.get(keys);
-        const entities: Array<InstanceType<T>> = [];
+        const entities: InstanceType<T>[] = [];
         if (results) {
             for (const data of results) {
                 const entity = await tsDatastoreOrm.loadEntity(classObject, data);
@@ -90,7 +89,7 @@ export class Session {
 
     /** @internal */
 
-    public delete<P extends IEntityKeyType<typeof BaseEntity> | Array<IEntityKeyType<typeof BaseEntity>>>(entities: P): void {
+    public delete<P extends IEntityKeyType<typeof BaseEntity> | IEntityKeyType<typeof BaseEntity>[]>(entities: P): void {
 
         for (const entity of (Array.isArray(entities) ? entities : [entities])) {
             const key = tsDatastoreOrm.normalizeAsKey(entity, entity._namespace, entity._kind);

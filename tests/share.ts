@@ -4,7 +4,7 @@ import {createConnection} from "../src/createConnection";
 import {TsDatastoreOrmError} from "../src/errors/TsDatastoreOrmError";
 
 export let connection!: Connection;
-export const beforeCallback = async () => {
+export const initializeConnection = async () => {
     if (!connection) {
         connection = await createConnection({
             keyFilename: "./datastoreServiceAccount.json",

@@ -11,7 +11,7 @@ import {Session} from "./transactions/Session";
 import {tsDatastoreOrm} from "./tsDatastoreOrm";
 import {
     ICreateValues,
-    IEntityKeyType, IIncrementHelperOptions,
+    IEntityKeyType, IIncrementHelperOptions, IKey,
     IRepositoryParams,
     IStrongTypeQueryOptions,
     IWeakTypeQueryOptions,
@@ -59,12 +59,12 @@ export class Repository<T extends typeof BaseEntity> {
         return await session.findOne(this.classObject, key);
     }
 
-    public async findMany(ids: Array<IEntityKeyType<T>>): Promise<Array<InstanceType<T>>> {
+    public async findMany(ids: IEntityKeyType<T>[]): Promise<InstanceType<T>[]> {
         const keys = tsDatastoreOrm.normalizeAndValidateKeys(ids, this.namespace, this.kind);
 
         const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
         try {
-            const entities: Array<InstanceType<T>> = [];
+            const entities: InstanceType<T>[] = [];
             const [response] = await this.datastore.get(keys);
             for (const data of response) {
                 const entity = await tsDatastoreOrm.loadEntity(this.classObject, data);
@@ -77,7 +77,7 @@ export class Repository<T extends typeof BaseEntity> {
         }
     }
 
-    public async findManyWithSessions(ids: Array<IEntityKeyType<T>>, session: Session): Promise<Array<InstanceType<T>>> {
+    public async findManyWithSessions(ids: IEntityKeyType<T>[], session: Session): Promise<InstanceType<T>[]> {
         const keys = tsDatastoreOrm.normalizeAndValidateKeys(ids, this.namespace, this.kind);
         return await session.findMany(this.classObject, keys);
     }
@@ -156,25 +156,25 @@ export class Repository<T extends typeof BaseEntity> {
         return await session.allocateIds(key, total);
     }
 
-    public async insert<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P): Promise<P> {
+    public async insert<P extends InstanceType<T> | InstanceType<T>[]>(entities: P): Promise<P> {
         return await this._internalInsert(entities, false);
     }
 
-    public insertWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): void {
+    public insertWithSession<P extends InstanceType<T> | InstanceType<T>[]>(entities: P, session: Session): void {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind, false);
         session.insert(entities);
     }
 
-    public async upsert<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P): Promise<P> {
+    public async upsert<P extends InstanceType<T> | InstanceType<T>[]>(entities: P): Promise<P> {
         return await this._internalInsert(entities, true);
     }
 
-    public upsertWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): void {
+    public upsertWithSession<P extends InstanceType<T> | InstanceType<T>[]>(entities: P, session: Session): void {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind, false);
         session.upsert(entities);
     }
 
-    public async update<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P): Promise<P> {
+    public async update<P extends InstanceType<T> | InstanceType<T>[]>(entities: P): Promise<P> {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind);
 
         // validate then run hook
@@ -196,7 +196,7 @@ export class Repository<T extends typeof BaseEntity> {
         return entities;
     }
 
-    public updateWithSession<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, session: Session): void {
+    public updateWithSession<P extends InstanceType<T> | InstanceType<T>[]>(entities: P, session: Session): void {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind);
         session.update(entities);
     }
@@ -220,10 +220,10 @@ export class Repository<T extends typeof BaseEntity> {
     //     }
     // }
 
-    public async delete<P extends IEntityKeyType<T> | Array<IEntityKeyType<T>>>(entities: P): Promise<P> {
-        const keys: DatastoreEntity.entity.Key[] = [];
+    public async delete<P extends IEntityKeyType<T> | IEntityKeyType<T>[]>(entities: P): Promise<P> {
+        const keys: IKey[] = [];
 
-        const newEntities: Array<IEntityKeyType<T>> = Array.isArray(entities) ? entities : [entities];
+        const newEntities: IEntityKeyType<T>[] = Array.isArray(entities) ? entities : [entities];
         for (const entity of newEntities) {
             const key = tsDatastoreOrm.normalizeAndValidateKey(entity, this.namespace, this.kind);
             keys.push(key);
@@ -245,9 +245,9 @@ export class Repository<T extends typeof BaseEntity> {
         }
     }
 
-    public deleteWithSession<P extends IEntityKeyType<T> | Array<IEntityKeyType<T>>>(entities: P, session: Session): void {
+    public deleteWithSession<P extends IEntityKeyType<T> | IEntityKeyType<T>[]>(entities: P, session: Session): void {
         // validate the entities first
-        const newEntities: Array<IEntityKeyType<T>> = Array.isArray(entities) ? entities : [entities];
+        const newEntities: IEntityKeyType<T>[] = Array.isArray(entities) ? entities : [entities];
         for (const entity of newEntities) {
             tsDatastoreOrm.normalizeAndValidateKey(entity, this.namespace, this.kind);
         }
@@ -301,11 +301,11 @@ export class Repository<T extends typeof BaseEntity> {
 
     // region private methods
 
-    private async _internalInsert<P extends InstanceType<T> | Array<InstanceType<T>>>(entities: P, isUpsert: boolean): Promise<P> {
+    private async _internalInsert<P extends InstanceType<T> | InstanceType<T>[]>(entities: P, isUpsert: boolean): Promise<P> {
         tsDatastoreOrm.validateEntity(entities, this.namespace, this.kind, false);
 
         const insertDataList: any[] = [];
-        const generateEntities: Map<BaseEntity, DatastoreEntity.entity.Key> = new Map();
+        const generateEntities: Map<BaseEntity, IKey> = new Map();
 
         if (isUpsert) {
             tsDatastoreOrm.runHookOfBeforeUpsert(entities);

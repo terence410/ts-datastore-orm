@@ -1,6 +1,6 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Query} from "@google-cloud/datastore/build/src";
-import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
+import {IKey} from "../types";
 
 export class QueryOperator<V extends any> {
     private fieldName: string;
@@ -8,9 +8,9 @@ export class QueryOperator<V extends any> {
     private datastore: Datastore.Datastore;
     private namespace: string | undefined;
     private kind: string;
-    private ancestorKey?: DatastoreEntity.entity.Key;
+    private ancestorKey?: IKey;
 
-    constructor(options: {fieldName: string, query: Query, datastore: Datastore.Datastore, namespace: string | undefined, kind: string, ancestorKey?: DatastoreEntity.entity.Key}) {
+    constructor(options: {fieldName: string, query: Query, datastore: Datastore.Datastore, namespace: string | undefined, kind: string, ancestorKey?: IKey}) {
         this.query = options.query;
         this.fieldName = options.fieldName;
         this.datastore = options.datastore;
@@ -46,7 +46,7 @@ export class QueryOperator<V extends any> {
     private _operation(operator: "=" | ">=" | ">" | "<=" | "<", value: any) {
         if (this.fieldName === "_id") {
             const key = this.datastore.key({namespace: this.namespace, path: [this.kind, value]});
-            
+
             if (this.ancestorKey) {
                 key.parent = this.ancestorKey;
             }

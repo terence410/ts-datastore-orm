@@ -2,7 +2,7 @@ import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import {BaseEntity} from "./BaseEntity";
 import {decoratorMeta} from "./decoratorMeta";
 import {TsDatastoreOrmError} from "./errors/TsDatastoreOrmError";
-import {IEntityKeyType, IGetInsertData, IGetUpdateData} from "./types";
+import {IEntityKeyType, IGetInsertData, IGetUpdateData, IKey} from "./types";
 
 class TsDatastoreOrm {
     public useFriendlyErrorStack = true;
@@ -76,7 +76,7 @@ class TsDatastoreOrm {
 
     /** @internal */
     public async loadEntity<T extends typeof BaseEntity>(classObject: T, data: any): Promise<InstanceType<T>> {
-        const key = data[DatastoreEntity.entity.KEY_SYMBOL] as DatastoreEntity.entity.Key;
+        const key = data[DatastoreEntity.entity.KEY_SYMBOL] as IKey;
         const entityFields = decoratorMeta.getEntityFieldMetaList(classObject);
         const entity = new classObject() as InstanceType<T>;
 
@@ -106,7 +106,7 @@ class TsDatastoreOrm {
     }
 
     /** @internal */
-    public normalizeAndValidateKeys(values: Array<IEntityKeyType<any>>, namespace: string | undefined, kind: string) {
+    public normalizeAndValidateKeys(values: IEntityKeyType<any>[], namespace: string | undefined, kind: string) {
         const keys = values.map(x => this.normalizeAsKey(x, namespace, kind));
         this.validateKey(keys, namespace, kind);
         return keys;

@@ -1,3 +1,4 @@
+import {assert} from "chai";
 import {
     AfterLoad,
     BaseEntity,
@@ -6,7 +7,7 @@ import {
     CompositeIndexExporter,
     createConnection,
     Entity,
-    Field,
+    Field, isSameKey, isSameKind, isSameNamespace, isSamePath,
     tsDatastoreOrm,
     TsDatastoreOrmError,
 } from "./src/index";
@@ -63,6 +64,35 @@ export class TaskGroup extends BaseEntity {
     public hook(type: string) {
         // you can update the entity after certain events happened
     }
+}
+
+async function connectionExamples() {
+    const connection1 = await createConnection({keyFilename: "./datastoreServiceAccount.json"});
+    const connection2 = await createConnection({clientEmail: "", privateKey: ""});
+    const datastore1 = connection1.datastore;
+    const datastore2 = connection2.datastore;
+}
+
+async function keyExamples() {
+    const connection = await createConnection({keyFilename: "./datastoreServiceAccount.json"});
+    const userRepository = connection.getRepository(User);
+
+    const user1 = new User();
+    const userKey1 = user1.getKey();
+    const userKey2 = userRepository.create().getKey();
+    const user3 = userRepository.create({_id: 3});
+    user3._ancestorKey = userKey1;
+    const userKey3 = user3.getKey();
+
+    const result1 = isSameKey(userKey1, userKey2); // true
+    const result2 = isSameNamespace(userKey1, userKey2); // true
+    const result3 = isSameKind(userKey1, userKey2); // true
+    const result4 = isSamePath(userKey1, userKey2); // true
+    const result5 = isSameKey(userKey1, userKey3); // false
+
+    const [encoded1] = await userRepository.datastore.keyToLegacyUrlSafe(userKey1);
+    const restoredKey = userRepository.datastore.keyFromLegacyUrlsafe(encoded1);
+    const result6 = isSameKey(userKey1, restoredKey); // true
 }
 
 async function generalExamples() {

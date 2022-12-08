@@ -1,9 +1,10 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Query} from "@google-cloud/datastore/build/src";
-import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
 import {BaseEntity} from "../BaseEntity";
 import {MAX_ENTITIES} from "../constants";
+import {IKey} from "../types";
 import {BaseQuery} from "./BaseQuery";
+import {entity} from "@google-cloud/datastore/build/src/entity";
 import {SelectKeyQueryAsyncIterator} from "./SelectKeyQueryAsyncIterator";
 
 export class SelectKeyQuery<KT extends BaseEntity> extends BaseQuery<KT> {
@@ -23,16 +24,16 @@ export class SelectKeyQuery<KT extends BaseEntity> extends BaseQuery<KT> {
     public async findOne() {
         const data = await super.findOne();
         if (data) {
-            return data[DatastoreEntity.entity.KEY_SYMBOL] as DatastoreEntity.entity.Key;
+            return data[entity.KEY_SYMBOL] as IKey;
         }
     }
 
     public async findMany() {
         const results = await super.findMany();
-        const keys: DatastoreEntity.entity.Key[] = [];
+        const keys: IKey[] = [];
 
         for (const data of results) {
-            const key = data[DatastoreEntity.entity.KEY_SYMBOL] as DatastoreEntity.entity.Key;
+            const key = data[entity.KEY_SYMBOL] as IKey;
             keys.push(key);
         }
 

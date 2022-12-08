@@ -5,7 +5,7 @@ import {Entity} from "../src/decorators/Entity";
 import {Field} from "../src/decorators/Field";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {assertAsyncError, beforeCallback, connection} from "./share";
+import {assertAsyncError, initializeConnection, connection} from "./share";
 
 @Entity({namespace: "testing"})
 class QueryTest extends BaseEntity {
@@ -55,7 +55,7 @@ class QueryTest extends BaseEntity {
     public object2: {string?: string, value?: number} = {};
 
     @Field({index: true, excludeFromIndexes: ["objectArray1[].value"]})
-    public objectArray1: Array<{string: string, value: number}> = [];
+    public objectArray1: {string: string, value: number}[] = [];
 }
 
 @Entity({namespace: "testing"})
@@ -74,7 +74,7 @@ const total = 50;
 const mod = 10;
 
 // before test
-before(beforeCallback);
+before(initializeConnection);
 describe("Query Test", () => {
     let entityRepository: Repository<typeof QueryTest>;
     let childRepository: Repository<typeof QueryTestChild>;

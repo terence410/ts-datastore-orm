@@ -28,6 +28,7 @@ import {TransactionManager} from "./transactions/TransactionManager";
 import {tsDatastoreOrm} from "./tsDatastoreOrm";
 import * as types from "./types";
 
+export * from "./utils/datastore";
 export {
     // core
     createConnection,

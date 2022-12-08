@@ -1,10 +1,10 @@
 import * as Datastore from "@google-cloud/datastore";
 import {Query} from "@google-cloud/datastore/build/src";
-import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
+import {entity} from "@google-cloud/datastore/build/src/entity";
 import * as DatastoreQuery from "@google-cloud/datastore/build/src/query";
 import {BaseEntity} from "../BaseEntity";
 import {tsDatastoreOrm} from "../tsDatastoreOrm";
-import {IBaseQueryParams, IFilterValue, IOrderOptions} from "../types";
+import {IBaseQueryParams, IFilterValue, IKey, IOrderOptions} from "../types";
 import {updateStack} from "../utils";
 import {QueryOperator} from "./QueryOperator";
 
@@ -14,7 +14,7 @@ export class BaseQuery<KT extends BaseEntity> {
     public readonly kind: string;
     public readonly query: Query;
     public lastRunQueryInfo: DatastoreQuery.RunQueryInfo | undefined;
-    private _ancestorKey?: DatastoreEntity.entity.Key;
+    private _ancestorKey?: IKey;
     private _endCursor: string | undefined;
 
     constructor(options: IBaseQueryParams) {
@@ -61,9 +61,9 @@ export class BaseQuery<KT extends BaseEntity> {
 
         return this;
     }
-    public filterKey(expression: (query: QueryOperator<DatastoreEntity.entity.Key>) => any): this;
+    public filterKey(expression: (query: QueryOperator<IKey>) => any): this;
     // tslint:disable-next-line:unified-signatures
-    public filterKey(value: DatastoreEntity.entity.Key): this;
+    public filterKey(value: IKey): this;
     public filterKey(value: any): this {
         const queryOperator = new QueryOperator({
             fieldName: "__key__",
@@ -95,7 +95,7 @@ export class BaseQuery<KT extends BaseEntity> {
         return this;
     }
 
-    public setAncestorKey(key: DatastoreEntity.entity.Key) {
+    public setAncestorKey(key: IKey) {
         this._ancestorKey = key;
         this.query.hasAncestor(key);
         return this;
@@ -190,8 +190,8 @@ export class BaseQuery<KT extends BaseEntity> {
         if (this.query.filters.length) {
             const wheres: string[] = [];
             for (const filter of this.query.filters) {
-                if (filter.val instanceof DatastoreEntity.entity.Key) {
-                    const key = filter.val as DatastoreEntity.entity.Key;
+                if (filter.val instanceof entity.Key) {
+                    const key = filter.val as IKey;
                     const op = filter.op === "HAS_ANCESTOR" ? "HAS ANCESTOR" : filter.op;
 
                     const keyParams = [];

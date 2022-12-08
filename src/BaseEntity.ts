@@ -1,6 +1,6 @@
-import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
+import {Key} from "@google-cloud/datastore/build/src/";
 import {decoratorMeta} from "./decoratorMeta";
-import {IEntityMetaOptions} from "./types";
+import {IEntityMetaOptions, IKey} from "./types";
 
 export class BaseEntity {
     public _id: any;
@@ -9,7 +9,7 @@ export class BaseEntity {
 
     public _kind: string;
 
-    public _ancestorKey?: DatastoreEntity.entity.Key;
+    public _ancestorKey?: IKey;
 
     constructor() {
         const entityMeta = decoratorMeta.entityMetaMap.get(this.constructor) as IEntityMetaOptions;
@@ -40,8 +40,8 @@ export class BaseEntity {
         });
     }
 
-    public getKey(): DatastoreEntity.entity.Key {
-        const key = new DatastoreEntity.entity.Key({namespace: this._namespace, path: [this._kind]});
+    public getKey(): IKey {
+        const key = new Key({namespace: this._namespace, path: [this._kind]});
 
         if (typeof this._id === "number") {
             key.id = this._id.toString();
