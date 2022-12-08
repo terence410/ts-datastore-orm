@@ -1,9 +1,9 @@
 import { assert, expect } from "chai";
 import {generateRandomString, timeout} from "../src/utils";
 // @ts-ignore
-import {assertAsyncError, assertTsDatastoreOrmError, beforeCallback, connection} from "./share";
+import {assertAsyncError, assertTsDatastoreOrmError, initializeConnection, connection} from "./share";
 
-before(beforeCallback);
+before(initializeConnection);
 describe("Lock Test", () => {
     it("simple lock", async () => {
         const lockManager = connection.getLockManager({expiresIn: 1000});
@@ -13,7 +13,7 @@ describe("Lock Test", () => {
         });
         assert.equal(result.value, 5);
     });
-    
+
     it("existing lock", async () => {
         const expiresIn = 1000;
         const lockManager = connection.getLockManager({expiresIn});

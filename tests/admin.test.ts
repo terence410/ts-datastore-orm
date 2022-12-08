@@ -1,8 +1,8 @@
 import { assert, expect } from "chai";
 // @ts-ignore
-import {beforeCallback, beforeCallback, connection} from "./share";
+import {initializeConnection, initializeConnection, connection} from "./share";
 
-before(beforeCallback);
+before(initializeConnection);
 describe("Admin Test", () => {
     it("datastore stats", async () => {
         const meta = connection.getAdmin();

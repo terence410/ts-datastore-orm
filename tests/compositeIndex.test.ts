@@ -6,7 +6,7 @@ import {Entity} from "../src/decorators/Entity";
 import {Field} from "../src/decorators/Field";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {beforeCallback, connection} from "./share";
+import {initializeConnection, connection} from "./share";
 
 @CompositeIndex({_id: "desc"})
 @CompositeIndex({date1: "desc", string1: "asc"})
@@ -38,7 +38,7 @@ export class Index2 extends BaseEntity {
 }
 
 // before test
-before(beforeCallback);
+before(initializeConnection);
 describe("Performance Test", () => {
     let repository1: Repository<typeof Index1>;
     let repository2: Repository<typeof Index2>;
@@ -57,7 +57,7 @@ describe("Performance Test", () => {
         const exporter = new CompositeIndexExporter();
         exporter.addEntity(Index1, {kind: "Kind1"});
         exporter.addEntity(Index2, {kind: "Kind2"});
-        exporter.addEntity([Index1, Index2]); 
+        exporter.addEntity([Index1, Index2]);
 
         const yaml = exporter.getYaml();
         assert.match(yaml, /indexes/);

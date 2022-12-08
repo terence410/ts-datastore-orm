@@ -1,7 +1,8 @@
 import * as Datastore from "@google-cloud/datastore";
-import * as DatastoreEntity from "@google-cloud/datastore/build/src/entity";
+import {entity} from "@google-cloud/datastore/build/src/entity";
 import {BaseEntity} from "../BaseEntity";
 import {tsDatastoreOrm} from "../tsDatastoreOrm";
+import {IKey} from "../types";
 import {updateStack} from "../utils";
 
 interface IAsyncIterator<T> {
@@ -20,7 +21,7 @@ export class SelectKeyQueryAsyncIterator<T extends typeof BaseEntity> {
         this.isClosed = true;
     }
 
-    public [Symbol.asyncIterator](): IAsyncIterator<DatastoreEntity.entity.Key> {
+    public [Symbol.asyncIterator](): IAsyncIterator<IKey> {
         return {
             next: async () => {
                 const friendlyErrorStack = tsDatastoreOrm.getFriendlyErrorStack();
@@ -37,9 +38,9 @@ export class SelectKeyQueryAsyncIterator<T extends typeof BaseEntity> {
 
                         // if we have results
                         if (results.length) {
-                            const keys: DatastoreEntity.entity.Key[] = [];
+                            const keys: IKey[] = [];
                             for (const data of results) {
-                                const key = data[DatastoreEntity.entity.KEY_SYMBOL] as DatastoreEntity.entity.Key;
+                                const key = data[entity.KEY_SYMBOL] as IKey;
                                 keys.push(key);
                             }
 

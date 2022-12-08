@@ -4,7 +4,7 @@ import {Entity} from "../src/decorators/Entity";
 import {Field} from "../src/decorators/Field";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {assertAsyncError, assertTsDatastoreOrmError, beforeCallback, connection} from "./share";
+import {assertAsyncError, assertTsDatastoreOrmError, initializeConnection, connection} from "./share";
 
 @Entity()
 export class IncrementHelper extends BaseEntity {
@@ -21,7 +21,7 @@ export class IncrementHelper extends BaseEntity {
     public string1: string = "";
 }
 
-before(beforeCallback);
+before(initializeConnection);
 describe("Helper Test: Increment", () => {
     let repository: Repository<typeof IncrementHelper>;
 

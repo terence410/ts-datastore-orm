@@ -1,7 +1,6 @@
 # ts-datastore-orm (Typescript Orm wrapper for Google Datastore)
 
 [![NPM version][npm-image]][npm-url]
-[![Test coverage][codecov-image]][codecov-url]
 
 [npm-image]: https://img.shields.io/npm/v/ts-datastore-orm.svg
 [npm-url]: https://npmjs.org/package/ts-datastore-orm
@@ -23,6 +22,7 @@ v5.1.0,
 v6.1.1, 
 v6.2.0, 
 v6.3.0
+v7.0.0
 
 You can also compare the native performance of 
 [@google-cloud/datastore](https://github.com/terence410/ts-datastore-orm/blob/master/src/performance/datastore.performance.ts) with 
@@ -37,6 +37,16 @@ Basically there is no significant overhead compared with native nodejs-datastore
   - set "emitDecoratorMetadata" to true. 
   - set "strictNullChecks" to true.
 - Generate service-account.json from Goolge APIs. (Details won't be covered here)
+
+# Example: connection
+```typescript
+async function connectionExamples() {
+  const connection1 = await createConnection({keyFilename: "./datastoreServiceAccount.json"});
+  const connection2 = await createConnection({clientEmail: "", privateKey: ""});
+  const datastore1 = connection1.datastore;
+  const datastore2 = connection2.datastore;
+}
+```
 
 # Example: define Entity
 ```typescript
@@ -95,6 +105,31 @@ export class TaskGroup extends BaseEntity {
     public hook(type: string) {
         // you can update the entity after certain events happened
     }
+}
+```
+
+# Example: general
+```typescript
+async function keyExamples() {
+    const connection = await createConnection({keyFilename: "./datastoreServiceAccount.json"});
+    const userRepository = connection.getRepository(User);
+
+    const user1 = new User();
+    const userKey1 = user1.getKey();
+    const userKey2 = userRepository.create().getKey();
+    const user3 = userRepository.create({_id: 3});
+    user3._ancestorKey = userKey1;
+    const userKey3 = user3.getKey();
+
+    const result1 = isSameKey(userKey1, userKey2); // true
+    const result2 = isSameNamespace(userKey1, userKey2); // true
+    const result3 = isSameKind(userKey1, userKey2); // true
+    const result4 = isSamePath(userKey1, userKey2); // true
+    const result5 = isSameKey(userKey1, userKey3); // false
+
+    const [encoded1] = await userRepository.datastore.keyToLegacyUrlSafe(userKey1);
+    const restoredKey = userRepository.datastore.keyFromLegacyUrlsafe(encoded1);
+    const result6 = isSameKey(userKey1, restoredKey); // true
 }
 ```
 

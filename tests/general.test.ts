@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import {Repository} from "../src/";
+import {isSameKey, isSameKind, isSameNamespace, isSamePath, Repository} from "../src/";
 // @ts-ignore
 import {Guild} from "./entities/Guild";
 // @ts-ignore
@@ -9,9 +9,9 @@ import {TaskGroup} from "./entities/TaskGroup";
 // @ts-ignore
 import {User} from "./entities/User";
 // @ts-ignore
-import {beforeCallback, connection} from "./share";
+import {initializeConnection, connection} from "./share";
 
-before(beforeCallback);
+before(initializeConnection);
 describe("General Test", () => {
     let guildRepository: Repository<typeof Guild>;
     let userRepository: Repository<typeof User>;
@@ -35,12 +35,42 @@ describe("General Test", () => {
         console.log(await userRepository.getUrl());
     });
 
+    it.only("key", async () => {
+        const user1 = new User();
+        const userKey1 = user1.getKey();
+        const userKey2 = userRepository.create().getKey();
+        const user3 = userRepository.create({_id: 3});
+        user3._ancestorKey = userKey1;
+        const userKey3 = user3.getKey();
+
+        assert.isDefined(userKey1.id);
+        assert.isTrue(isSameKey(userKey1, userKey2));
+        assert.isTrue(isSameNamespace(userKey1, userKey2));
+        assert.isTrue(isSameKind(userKey1, userKey2));
+        assert.isTrue(isSamePath(userKey1, userKey2));
+        assert.isFalse(isSameKey(userKey1, userKey3));
+
+        // another entity
+        const guild1 = guildRepository.create({_id: "hello"});
+        const guildKey1 = guild1.getKey();
+        assert.isDefined(guildKey1.name);
+        assert.isTrue(isSameNamespace(userKey1, guildKey1));
+        assert.isFalse(isSameKind(userKey1, guildKey1));
+        assert.isFalse(isSamePath(userKey1, guildKey1));
+        assert.isFalse(isSameKey(userKey1, guildKey1));
+
+        const [encoded1] = await userRepository.datastore.keyToLegacyUrlSafe(guildKey1);
+        const restoredKey = userRepository.datastore.keyFromLegacyUrlsafe(encoded1);
+        assert.isTrue(isSameKey(guildKey1, restoredKey));
+    });
+
     it("new object", async () => {
         const user = new User();
         assert.equal(user._kind, "User");
         assert.equal(user._namespace, "testing");
         assert.equal(user._kind, userRepository.kind);
         assert.equal(user._namespace, userRepository.namespace);
+        assert.equal(user._ancestorKey, undefined);
 
         // _kind and _namespace is not enumerable
         user._kind = "hello";

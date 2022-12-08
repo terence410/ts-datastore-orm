@@ -4,7 +4,7 @@ import {Entity} from "../src/decorators/Entity";
 import {Field} from "../src/decorators/Field";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {assertTsDatastoreOrmError, beforeCallback, connection} from "./share";
+import {assertTsDatastoreOrmError, initializeConnection, connection} from "./share";
 
 @Entity()
 export class RawEntity extends BaseEntity {
@@ -40,7 +40,7 @@ export class IndexEntity extends BaseEntity {
 }
 
 // before test
-before(beforeCallback);
+before(initializeConnection);
 describe("Index Resave Helper Test", () => {
     const total = 10;
     let rawRepository: Repository<typeof RawEntity>;

@@ -4,7 +4,7 @@ import {Entity} from "../src/decorators/Entity";
 import {BaseEntity} from "../src/BaseEntity";
 import {Repository} from "../src/Repository";
 // @ts-ignore
-import {connection, beforeCallback} from "./share";
+import {connection, initializeConnection} from "./share";
 
 export class SubClassBase extends BaseEntity {
     @Field({generateId: true})
@@ -35,7 +35,7 @@ export class SubClass extends IntermediateClass {
     public name: string = "";
 }
 
-before(beforeCallback);
+before(initializeConnection);
 describe("Subclass Test", () => {
     let repository1: Repository<typeof SubClass>;
     before(() => {
