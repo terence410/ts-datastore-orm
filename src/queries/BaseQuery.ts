@@ -228,7 +228,7 @@ export class BaseQuery<KT extends BaseEntity> {
         }
 
         for (const order of this.query.orders) {
-            sql += ` ORDER BY ${order.name} ${order.sign ? "DESC" : "ASC"}`;
+            sql += ` ORDER BY ${order.name} ${order.sign === '-' ? "DESC" : "ASC"}`;
         }
 
         if (this.query.limitVal > 0) {
